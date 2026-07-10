@@ -2,9 +2,9 @@
 from pathlib import Path
 
 from .platform import current_platform
-from .registry import CAPABILITIES, PRESETS, by_id, for_capability_tier
+from .registry import CAPABILITIES, PRESETS, MODELS, by_id, for_capability_tier
 from .config import load_config, save_config
-from .download import ensure as _ensure, is_present, model_dir, DownloadDeclined
+from .download import ensure as _ensure, is_present, DownloadDeclined
 
 USER_TIERED = ("asr", "embedding", "vlm")   # capabilities with a user preset axis
 
@@ -34,9 +34,9 @@ class ModelManager:
         return for_capability_tier(capability, tier)
 
     def _resolve_ocr(self):
-        for tier in ("fixed",):
-            for cap_model in (m for m in _ocr_models() if m.artifact_for(self.platform)):
-                return cap_model
+        for m in _ocr_models():
+            if m.artifact_for(self.platform):
+                return m
         return None
 
     # --- choices ---
@@ -55,6 +55,8 @@ class ModelManager:
         if val == "off":
             if capability != "vlm":
                 raise ValueError("only vlm may be turned off")
+            cfg.overrides[capability] = "off"
+        elif capability == "vlm" and val == "light":
             cfg.overrides[capability] = "off"
         elif val in PRESETS:
             spec = for_capability_tier(capability, val)
@@ -111,5 +113,4 @@ class ModelManager:
 
 
 def _ocr_models():
-    from .registry import MODELS
     return [m for m in MODELS if m.capability == "ocr"]

@@ -32,6 +32,12 @@ def test_override_persists_across_instances(tmp_path):
     mm2 = ModelManager(tmp_path, platform="win-x64")
     assert mm2.resolve("embedding").id == "bge-m3"
 
+def test_set_choice_vlm_light_means_off(tmp_path):
+    mm = ModelManager(tmp_path, platform="win-x64")
+    mm.set_preset("high")            # vlm would be paddleocr-vl
+    mm.set_choice("vlm", "light")    # light == off for vlm
+    assert mm.resolve("vlm") is None
+
 def test_set_choice_off_only_valid_for_vlm(tmp_path):
     mm = ModelManager(tmp_path, platform="win-x64")
     mm.set_preset("high")
