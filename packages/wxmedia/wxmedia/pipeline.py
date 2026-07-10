@@ -1,4 +1,5 @@
 """Orchestrate voice -> text: source -> silk -> asr -> store, incrementally."""
+import sys
 import time
 from pathlib import Path
 
@@ -27,13 +28,13 @@ def transcribe_all(state_dir, runner, pilk_mod=None, limit=None, progress=None) 
                 text = runner.transcribe(str(wav))
                 store.put(svr, "voice", text, runner.model_id, int(time.time()))
                 processed += 1
-            except Exception:
+            except Exception as e:
                 failed += 1
+                sys.stderr.write("[wxmedia] transcribe failed svr=%s: %s\n" % (svr, e))
             finally:
-                if wav is not None:
+                for ext in (".silk", ".wav"):
                     try:
-                        Path(wav).unlink(missing_ok=True)
-                        Path(str(wav)[:-4] + ".silk").unlink(missing_ok=True)
+                        (work / (str(svr) + ext)).unlink(missing_ok=True)
                     except OSError:
                         pass
             if progress is not None:

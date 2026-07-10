@@ -13,6 +13,10 @@ class FakePilk:
     @staticmethod
     def silk_to_wav(silk, wav, rate): Path(wav).write_bytes(b"RIFF")
 
+class RaisingPilk:
+    @staticmethod
+    def silk_to_wav(silk, wav, rate): raise RuntimeError("decode boom")
+
 class FakeRunner:
     model_id = "fake-asr"
     def __init__(self, mapping=None, fail_on=()): self.mapping = mapping or {}; self.fail_on = fail_on
@@ -47,3 +51,11 @@ def test_work_wavs_cleaned_up(tmp_path):
     transcribe_all(tmp_path, FakeRunner(), pilk_mod=FakePilk)
     work = tmp_path / "wxmedia" / "work"
     assert not list(work.glob("*.wav")) if work.exists() else True
+
+def test_to_wav_failure_cleans_up_silk(tmp_path):
+    _media_db(tmp_path, [(100, 1, b"\x02a")])
+    res = transcribe_all(tmp_path, FakeRunner(), pilk_mod=RaisingPilk)
+    assert res == {"processed": 0, "skipped": 0, "failed": 1}
+    work = tmp_path / "wxmedia" / "work"
+    assert list(work.glob("*.silk")) == []   # decrypted audio not left on disk
+    assert list(work.glob("*.wav")) == []
