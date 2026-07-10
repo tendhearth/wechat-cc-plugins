@@ -1,7 +1,0 @@
-Metadata-Version: 2.4
-Name: model-manager
-Version: 0.1.0
-Summary: Tiered local-model manager for wechat-cc enrichment plugins
-Requires-Python: >=3.10
-Provides-Extra: test
-Requires-Dist: pytest>=7; extra == "test"
