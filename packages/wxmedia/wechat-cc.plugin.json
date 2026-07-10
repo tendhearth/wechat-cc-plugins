@@ -7,8 +7,8 @@
   "description": "把微信语音消息本地转成可搜索文本（SILK→ASR，全本地，模型分层可选）。读 wxvault 解密产物，不外连。",
   "spawn": {
     "command": "python3",
-    "args": ["${pluginDir}/wxmedia/server.py"],
-    "env": { "WXVAULT_STATE_DIR": "${dataDir}" }
+    "args": ["-m", "wxmedia.server"],
+    "env": { "PYTHONPATH": "${pluginDir}", "WXVAULT_STATE_DIR": "${dataDir}" }
   },
   "healthcheck": { "requiresPaths": ["${dataDir}/out/decrypted"] },
   "setup": {

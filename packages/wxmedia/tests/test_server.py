@@ -35,3 +35,28 @@ def test_set_model(tmp_path):
 def test_unknown_tool_is_error(tmp_path):
     r = _call("nope", {}, _deps(tmp_path))
     assert r["error"]["code"] == -32601
+
+def test_initialize_returns_server_info(tmp_path):
+    r = dispatch({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+                 "params": {"protocolVersion": "2025-06-18"}}, _deps(tmp_path))
+    assert r["result"]["serverInfo"]["name"] == "wxmedia"
+    assert "protocolVersion" in r["result"]
+
+def test_tools_list(tmp_path):
+    r = dispatch({"jsonrpc": "2.0", "id": 1, "method": "tools/list"}, _deps(tmp_path))
+    tools = r["result"]["tools"]
+    assert len(tools) == 4
+    names = {t["name"] for t in tools}
+    assert names == {"voice_backfill", "get_media_text", "models_status", "set_model"}
+
+def test_notification_returns_none(tmp_path):
+    r = dispatch({"jsonrpc": "2.0", "method": "notifications/initialized"}, _deps(tmp_path))
+    assert r is None
+
+def test_ping(tmp_path):
+    r = dispatch({"jsonrpc": "2.0", "id": 1, "method": "ping"}, _deps(tmp_path))
+    assert r["result"] == {}
+
+def test_set_model_missing_args_is_error(tmp_path):
+    r = _call("set_model", {}, _deps(tmp_path))
+    assert r["error"]["code"] == -32602
