@@ -23,10 +23,12 @@ def load_config(state_dir) -> Config:
         data = json.loads(p.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return Config()
+    if not isinstance(data, dict):
+        return Config()
     preset = data.get("preset", "light")
     if preset not in PRESETS:
         preset = "light"
-    overrides = data.get("overrides") or {}
+    overrides = data.get("overrides")
     if not isinstance(overrides, dict):
         overrides = {}
     return Config(preset=preset, overrides={str(k): str(v) for k, v in overrides.items()})

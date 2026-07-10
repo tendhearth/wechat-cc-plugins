@@ -25,3 +25,14 @@ def test_unknown_preset_normalized_to_light(tmp_path):
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text('{"preset": "ultra", "overrides": {}}', encoding="utf-8")
     assert load_config(tmp_path).preset == "light"
+
+import pytest
+
+@pytest.mark.parametrize("bad", ["[1,2,3]", "null", "42", '"hello"'])
+def test_non_dict_json_falls_back_to_default(tmp_path, bad):
+    p = config_path(tmp_path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(bad, encoding="utf-8")
+    cfg = load_config(tmp_path)
+    assert cfg.preset == "light"
+    assert cfg.overrides == {}
