@@ -1,0 +1,24 @@
+{
+  "name": "wxmedia",
+  "kind": "mcp",
+  "version": "0.1.0",
+  "minWechatCcVersion": "0.6.4",
+  "displayName": "语音转文字 (wxmedia)",
+  "description": "把微信语音消息本地转成可搜索文本（SILK→ASR，全本地，模型分层可选）。读 wxvault 解密产物，不外连。",
+  "spawn": {
+    "command": "python3",
+    "args": ["${pluginDir}/wxmedia/server.py"],
+    "env": { "WXVAULT_STATE_DIR": "${dataDir}" }
+  },
+  "healthcheck": { "requiresPaths": ["${dataDir}/out/decrypted"] },
+  "setup": {
+    "command": "python3",
+    "args": ["${pluginDir}/setup.py"],
+    "env": { "WXVAULT_STATE_DIR": "${dataDir}" }
+  },
+  "requires": {
+    "python3": "required（依赖 pilk + model-manager；ASR 运行时按所选档下载）",
+    "setup": "python3 ${pluginDir}/setup.py：装依赖 + 选模型档（轻量/高精度）。语音源来自 wxvault 解密的 media_*.sqlite，需先跑 wxvault。"
+  },
+  "tools": ["voice_backfill", "get_media_text", "models_status", "set_model"]
+}
