@@ -45,3 +45,61 @@ class IndexStore:
 
     def close(self) -> None:
         self.con.close()
+
+    def upsert(self, chunk, vector, model_id) -> None:
+        import numpy as np
+        blob = None if vector is None else np.asarray(vector, dtype=np.float32).tobytes()
+        cur = self.con.execute("SELECT rowid FROM docs WHERE msg_key=?", (chunk["msg_key"],)).fetchone()
+        if cur is not None:
+            rid = cur[0]
+            self.con.execute(
+                "UPDATE docs SET conversation=?, sender=?, time=?, type=?, text=?, vector=?, model_id=? "
+                "WHERE rowid=?",
+                (chunk["conversation"], chunk["sender"], chunk["time"], chunk["type"],
+                 chunk["text"], blob, model_id, rid))
+            self.con.execute("DELETE FROM docs_fts WHERE rowid=?", (rid,))
+        else:
+            cur = self.con.execute(
+                "INSERT INTO docs(msg_key, conversation, sender, time, type, text, vector, model_id) "
+                "VALUES(?,?,?,?,?,?,?,?)",
+                (chunk["msg_key"], chunk["conversation"], chunk["sender"], chunk["time"],
+                 chunk["type"], chunk["text"], blob, model_id))
+            rid = cur.lastrowid
+        self.con.execute("INSERT INTO docs_fts(rowid, text) VALUES(?, ?)", (rid, chunk["text"]))
+        self.con.commit()
+
+    def load_vectors(self):
+        import numpy as np
+        rows = self.con.execute(
+            "SELECT rowid, vector FROM docs WHERE vector IS NOT NULL ORDER BY rowid").fetchall()
+        if not rows:
+            return [], np.zeros((0, 0), dtype=np.float32)
+        rowids = [r["rowid"] for r in rows]
+        mat = np.stack([np.frombuffer(r["vector"], dtype=np.float32) for r in rows])
+        return rowids, mat
+
+    def keyword_search(self, query, k):
+        q = (query or "").strip()
+        if not q:
+            return []
+        if len(q) >= 3:
+            # Wrap as a single FTS5 phrase literal so user punctuation / operator words
+            # (AND, -, ", *, :, ...) are matched literally instead of raising a MATCH syntax error.
+            fq = '"' + q.replace('"', '""') + '"'
+            rows = self.con.execute(
+                "SELECT rowid FROM docs_fts WHERE docs_fts MATCH ? ORDER BY bm25(docs_fts) LIMIT ?",
+                (fq, k)).fetchall()
+        else:
+            rows = self.con.execute(
+                "SELECT rowid FROM docs WHERE text LIKE '%'||?||'%' ORDER BY length(text) ASC LIMIT ?",
+                (q, k)).fetchall()
+        return [r["rowid"] for r in rows]
+
+    def get_docs(self, rowids):
+        out = {}
+        for rid in rowids:
+            r = self.con.execute(
+                "SELECT conversation, sender, time, type, text FROM docs WHERE rowid=?", (rid,)).fetchone()
+            if r:
+                out[rid] = dict(r)
+        return out
