@@ -15,7 +15,7 @@ class IndexStore:
             "sender TEXT, time INTEGER, type TEXT, text TEXT, vector BLOB, model_id TEXT)")
         self.con.execute(
             "CREATE VIRTUAL TABLE IF NOT EXISTS docs_fts USING fts5("
-            "text, content='docs', content_rowid='rowid', tokenize='trigram')")
+            "text, tokenize='trigram')")
         self.con.execute(
             "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)")
         self.con.commit()

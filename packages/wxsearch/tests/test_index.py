@@ -33,3 +33,16 @@ def test_persists_and_clear(tmp_path):
     s.clear()
     assert s.count() == 0
     s.close()
+
+def test_clear_purges_fts_index(tmp_path):
+    s = IndexStore(tmp_path)
+    s.con.execute("INSERT INTO docs(msg_key, text) VALUES('a:1','响水石板大米')")
+    rid = s.con.execute("SELECT rowid FROM docs WHERE msg_key='a:1'").fetchone()[0]
+    s.con.execute("INSERT INTO docs_fts(rowid, text) VALUES(?, '响水石板大米')", (rid,))
+    s.con.commit()
+    s.clear()
+    s.close()
+    s2 = IndexStore(tmp_path)                 # fresh connection, rules out caching
+    assert s2.con.execute("SELECT rowid FROM docs_fts WHERE docs_fts MATCH '石板大'").fetchall() == []
+    assert s2.count() == 0
+    s2.close()
