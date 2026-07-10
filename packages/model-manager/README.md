@@ -20,6 +20,10 @@ mm.prefetch()                         # download everything for current config
 - Downloads try ModelScope first, HuggingFace fallback; sha256 verified when the
   registry pins it. Zero-URL entries (e.g. macOS Apple Vision OCR) count as
   present without a download.
+- **The built-in `_default_fetcher` is a placeholder** — it writes a single
+  `model.bin` and does not yet handle multi-file model repos. Consuming plugins
+  pass a repo-aware `fetcher(url, dest)` to `ensure(...)`; the real fetcher lands
+  with the first plugin that downloads weights.
 - No third-party runtime deps. Python 3.10+.
 
 ## Tests
