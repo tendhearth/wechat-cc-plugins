@@ -10,20 +10,23 @@ def main():
         except Exception:
             pass
     print("== wxmedia setup ==")
-    need = []
+    # pilk is on PyPI — pip-install if missing
     try:
         import pilk  # noqa: F401
     except ImportError:
-        need.append("pilk")
+        print("安装依赖：pilk")
+        r = subprocess.run([sys.executable, "-m", "pip", "install", "pilk"])
+        if r.returncode != 0:
+            sys.exit("!! pilk 安装失败")
+    # model-manager is a monorepo sibling (packages/model-manager), NOT on PyPI —
+    # resolve it via sys.path rather than pip.
+    from wxmedia._deps import ensure_model_manager, model_manager_dir
+    ensure_model_manager()
     try:
         import model_manager  # noqa: F401
     except ImportError:
-        need.append("model-manager")
-    if need:
-        print("安装依赖：%s" % " ".join(need))
-        r = subprocess.run([sys.executable, "-m", "pip", "install", *need])
-        if r.returncode != 0:
-            sys.exit("!! 依赖安装失败")
+        sys.exit("!! 找不到 model-manager（应在 %s）。确认它与 wxmedia 一同放在 monorepo/打包中。"
+                 % model_manager_dir())
     print("✓ 依赖就绪。ASR 模型在首次 voice_backfill 时按所选档懒下载（默认轻量 SenseVoice）。")
 
 

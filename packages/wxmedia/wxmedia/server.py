@@ -105,6 +105,8 @@ def main():
         except Exception:
             pass
     state_dir = os.environ.get("WXVAULT_STATE_DIR") or os.path.dirname(os.path.abspath(__file__))
+    from ._deps import ensure_model_manager
+    ensure_model_manager()          # resolve the sibling model-manager package from the monorepo
     from model_manager import ModelManager
     from .pipeline import transcribe_all
     from .asr import SenseVoiceRunner
