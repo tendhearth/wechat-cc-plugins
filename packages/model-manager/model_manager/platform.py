@@ -1,6 +1,8 @@
 """Current-OS detection, reduced to a small set of platform keys."""
 import platform as _platform
 
+PLATFORMS = ("mac-arm64", "mac-x64", "win-x64", "linux-x64")
+
 
 def platform_from(system: str, machine: str) -> str:
     system = (system or "").lower()

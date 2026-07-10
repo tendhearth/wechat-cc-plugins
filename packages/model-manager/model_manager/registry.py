@@ -1,9 +1,10 @@
 """Static catalogue of downloadable local models, per capability/tier/OS."""
 from dataclasses import dataclass
 
+from .platform import PLATFORMS
+
 CAPABILITIES = ("asr", "embedding", "vlm", "ocr")
 PRESETS = ("light", "high")
-_KNOWN_PLATFORMS = {"mac-arm64", "win-x64", "mac-x64", "linux-x64"}
 
 
 @dataclass(frozen=True)
@@ -20,15 +21,15 @@ class ModelSpec:
     capability: str          # one of CAPABILITIES
     tier: str                # "light" | "high" | "fixed"
     runtime: str             # "llama.cpp" | "whisperkit" | "whisper.cpp" | "onnx" | "vision" | "mlx"
-    artifacts: tuple
+    artifacts: tuple[Artifact, ...]
 
-    def artifact_for(self, platform: str):
+    def artifact_for(self, platform: str) -> Artifact | None:
         exact = None
         anyart = None
         for a in self.artifacts:
             if a.platform == platform:
                 exact = a
-            elif a.platform == "any" and platform in _KNOWN_PLATFORMS:
+            elif a.platform == "any" and platform in PLATFORMS:
                 anyart = a
         return exact or anyart
 
@@ -110,14 +111,14 @@ MODELS = (
 )
 
 
-def by_id(model_id: str):
+def by_id(model_id: str) -> ModelSpec | None:
     for m in MODELS:
         if m.id == model_id:
             return m
     return None
 
 
-def for_capability_tier(capability: str, tier: str):
+def for_capability_tier(capability: str, tier: str) -> ModelSpec | None:
     for m in MODELS:
         if m.capability == capability and m.tier == tier:
             return m
