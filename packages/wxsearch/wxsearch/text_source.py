@@ -1,15 +1,49 @@
 """Yield searchable chunks: text messages (message_content) + wxmedia-derived media text."""
 import glob
+import hashlib
+import io
 import os
 import sqlite3
 from pathlib import Path
 
+try:
+    import zstandard as _zstd
+except Exception:                       # zstandard optional; degrade to raw bytes
+    _zstd = None
+
 TEXT_TYPE = 1
-KIND_BY_TYPE = {34: "voice", 3: "image"}   # WeChat local_type -> media kind
+ZMAGIC = b"\x28\xb5\x2f\xfd"            # WCDB compresses long message_content with dictionary-less zstd
+_DCTX = _zstd.ZstdDecompressor() if _zstd else None
 
 
 def _ro(path):
     return sqlite3.connect("file:%s?mode=ro" % path, uri=True)
+
+
+def _to_text(content, sender_un):
+    """Decode message_content (str, or zstd-compressed bytes) and strip the group
+    sender prefix. Mirrors wxvault_mcp._to_text: prefix is stripped only when it
+    exactly matches the resolved sender username, never on a bare colon."""
+    if content is None:
+        return ""
+    if isinstance(content, (bytes, bytearray)):
+        b = bytes(content)
+        if b[:4] == ZMAGIC and _DCTX is not None:
+            try:
+                b = _DCTX.decompress(b)
+            except Exception:
+                try:
+                    b = _DCTX.stream_reader(io.BytesIO(b)).read()
+                except Exception:
+                    pass
+        s = b.decode("utf-8", "replace")
+    else:
+        s = content
+    if sender_un:
+        for pref in (sender_un + ":\n", sender_un + ":"):
+            if s.startswith(pref):
+                return s[len(pref):]
+    return s
 
 
 def _load_derived(state_dir):
@@ -28,14 +62,6 @@ def _load_derived(state_dir):
     return out
 
 
-def _strip_sender_prefix(content):
-    # group messages store "<sender_id>:\n<body>"
-    nl = content.find("\n")
-    if nl != -1 and ":" in content[:nl]:
-        return content[nl + 1:]
-    return content
-
-
 def iter_chunks(state_dir):
     derived = _load_derived(state_dir)
     for dbpath in sorted(glob.glob(os.path.join(str(state_dir), "out", "decrypted", "message_*.sqlite"))):
@@ -48,34 +74,31 @@ def iter_chunks(state_dir):
                    for r in con.execute("SELECT rowid, user_name FROM Name2Id")}
             sessions = {r["user_name"] for r in con.execute(
                 "SELECT user_name FROM Name2Id WHERE is_session=1")}
-            import hashlib
-            table_conv = {}
-            for un in sessions:
-                table_conv["Msg_" + hashlib.md5(un.encode()).hexdigest()] = un
+            table_conv = {"Msg_" + hashlib.md5(un.encode()).hexdigest(): un for un in sessions}
             for tbl in [n for n in names if n.startswith("Msg_")]:
                 conv = table_conv.get(tbl, tbl)
-                # Fallback: if table not in mapping and there's only one session, use it
-                if conv == tbl and len(sessions) == 1:
-                    conv = next(iter(sessions))
                 for r in con.execute(
                         'SELECT local_id, local_type, real_sender_id, create_time, server_id, '
                         'message_content FROM "%s"' % tbl):
                     ltype = (r["local_type"] or 0) & 0xFFFFFFFF
-                    svr = str(r["server_id"]) if r["server_id"] else ""
+                    sid = r["real_sender_id"]
+                    sender_un = n2i.get(sid)
                     if ltype == TEXT_TYPE:
-                        text = _strip_sender_prefix(r["message_content"] or "").strip()
+                        text = _to_text(r["message_content"], sender_un).strip()
                         kind = "text"
-                    elif svr in derived:
-                        kind, text = derived[svr]
-                        text = (text or "").strip()
                     else:
-                        continue
+                        # match wxmedia's key scheme: real server_id, else synthetic local_<id>
+                        mkey = str(r["server_id"]) if r["server_id"] else "local_%s" % r["local_id"]
+                        if mkey not in derived:
+                            continue
+                        kind, dtext = derived[mkey]
+                        text = (dtext or "").strip()
                     if not text:
                         continue
                     yield {
                         "msg_key": "%s:%s" % (tbl, r["local_id"]),
                         "conversation": conv,
-                        "sender": n2i.get(r["real_sender_id"], str(r["real_sender_id"])),
+                        "sender": sender_un or (str(sid) if sid else ""),
                         "time": int(r["create_time"] or 0),
                         "type": kind,
                         "text": text,
