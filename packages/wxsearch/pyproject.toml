@@ -14,3 +14,8 @@ test = ["pytest>=7"]
 
 [tool.setuptools.packages.find]
 include = ["wxsearch*"]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: real-machine tests that hit the network / a real model (deselect with -m 'not integration')",
+]
