@@ -1,0 +1,24 @@
+{
+  "name": "wxfacts",
+  "kind": "mcp",
+  "version": "0.1.0",
+  "minWechatCcVersion": "0.6.4",
+  "displayName": "关系情报 (wxfacts)",
+  "description": "由 agent 驱动的本地知识层:喂你未抽取的 1:1 消息窗口,存回你抽取的实体/关系/义务(带 provenance)。插件全本地、不联网、不碰密钥——LLM 抽取用你自己已连的模型。读 wxvault 解密产物,复用 wxgraph。",
+  "spawn": {
+    "command": "python3",
+    "args": ["-m", "wxfacts.server"],
+    "env": { "PYTHONPATH": "${pluginDir}", "WXVAULT_STATE_DIR": "${dataDir}" }
+  },
+  "healthcheck": { "requiresPaths": ["${dataDir}/out/decrypted"] },
+  "setup": {
+    "command": "python3",
+    "args": ["${pluginDir}/setup.py"],
+    "env": { "WXVAULT_STATE_DIR": "${dataDir}" }
+  },
+  "requires": {
+    "python3": "required(依赖 zstandard + 兄弟 wxgraph)",
+    "setup": "python3 ${pluginDir}/setup.py:装 zstandard + 解析兄弟 wxgraph。先跑 wxvault 解密(建议也跑 wxgraph rebuild 以获得联系人名字)。"
+  },
+  "tools": ["extraction_batch", "record_facts", "contact_facts", "find_facts", "set_fact_status", "extraction_status"]
+}
