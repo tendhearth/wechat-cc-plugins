@@ -32,6 +32,15 @@ def test_zstd_text_variants():
     assert zstd_text(blob) == "压缩正文"
 
 
+def test_zstd_text_decodes_frame_without_content_size():
+    # WCDB frequently writes zstd frames with NO content-size header, which makes
+    # one-shot decompress() raise; zstd_text must fall back to the streaming reader
+    # (else wxgraph/wxfacts get replacement-char gibberish on ~31% of long messages).
+    long_text = "这是一段没有内容大小头的长文本" * 8
+    blob = zstandard.ZstdCompressor(write_content_size=False).compress(long_text.encode())
+    assert zstd_text(blob) == long_text
+
+
 def test_classify_type_basic_and_app_subtypes():
     assert classify_type(1, None) == "text"
     assert classify_type(34, None) == "voice"

@@ -1,6 +1,7 @@
 """Read-only readers over wxvault's decrypted contact.sqlite + message_*.sqlite."""
 import glob
 import hashlib
+import io
 import os
 import re
 import sqlite3
@@ -37,7 +38,12 @@ def zstd_text(value) -> str:
             try:
                 b = _DCTX.decompress(b)
             except Exception:
-                pass
+                try:
+                    # WCDB frames often omit the content-size header, which makes
+                    # one-shot decompress() raise; the streaming reader handles them.
+                    b = _DCTX.stream_reader(io.BytesIO(b)).read()
+                except Exception:
+                    pass
         return b.decode("utf-8", "replace")
     return value
 
