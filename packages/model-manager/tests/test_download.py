@@ -40,6 +40,13 @@ def test_ensure_raises_when_all_urls_fail(tmp_path):
     with pytest.raises(DownloadFailed):
         ensure(tmp_path, _spec(), "win-x64", fetcher=fake)
 
+def test_ensure_refuses_network_download_without_sha256(tmp_path):
+    # the REAL network path (no injected fetcher) must fail closed when the artifact
+    # declares no sha256 — supply-chain integrity gate (raises before any urlopen).
+    with pytest.raises(DownloadFailed):
+        ensure(tmp_path, _spec(sha=None), "win-x64")
+
+
 def test_ensure_verifies_sha256(tmp_path):
     good = hashlib.sha256(b"weights").hexdigest()
     def fake(url, dest): dest.write_bytes(b"weights")

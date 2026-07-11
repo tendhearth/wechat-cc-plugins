@@ -25,8 +25,10 @@ def _make_db(dirpath, name2id, tables):
 
 
 def test_batch_id_roundtrip():
-    bid = encode_batch_id("wxid_a", 12345)
-    assert decode_batch_id(bid) == ("wxid_a", 12345)
+    bid = encode_batch_id("wxid_a", 12345, 7)
+    assert decode_batch_id(bid) == ("wxid_a", 12345, 7)
+    # pre-cursor batch_ids (no "l") decode with local_id 0
+    assert decode_batch_id('{"c": "wxid_a", "u": 12345}') == ("wxid_a", 12345, 0)
 
 
 def test_yields_text_1to1_with_msg_key_and_skips_group_and_nontext(tmp_path):
@@ -42,6 +44,6 @@ def test_yields_text_1to1_with_msg_key_and_skips_group_and_nontext(tmp_path):
     msgs = {m["msg_key"]: m for m in iter_1to1_messages(tmp_path)}
     assert set(msgs) == {"%s:10" % _tbl(a), "%s:11" % _tbl(a)}
     assert msgs["%s:10" % _tbl(a)] == {"msg_key": "%s:10" % _tbl(a), "conversation": a,
-                                       "sender_un": me, "ts": 100, "text": "hello there"}
+                                       "sender_un": me, "ts": 100, "local_id": 10, "text": "hello there"}
     assert msgs["%s:11" % _tbl(a)]["text"] == "压缩的一句话"   # zstd decoded
     assert msgs["%s:11" % _tbl(a)]["sender_un"] == a

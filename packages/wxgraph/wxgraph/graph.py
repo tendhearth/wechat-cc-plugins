@@ -48,6 +48,12 @@ def build(state_dir, now, weights=None):
     weights = weights or DEFAULT_WEIGHTS
     messages = list(iter_messages(state_dir))
     owner = detect_owner(messages)
+    if owner is None:
+        # Can't tell which account is "me" -> sent/recv direction is unknowable, so every
+        # score (reciprocity, initiations) is silently wrong. Warn loudly + suggest the fix.
+        import sys
+        sys.stderr.write("[wxgraph] WARNING: could not infer owner (my) username from 1:1 "
+                         "chats; scores will be unreliable. Set WXGRAPH_OWNER to your wxid.\n")
     display_map = load_display_map(state_dir)
     profiles = build_profiles(messages, owner, now, weights)
     display_to_un = _invert_display(display_map)

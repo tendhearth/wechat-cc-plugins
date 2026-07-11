@@ -68,10 +68,15 @@ class IndexStore:
         self.con.execute("INSERT INTO docs_fts(rowid, text) VALUES(?, ?)", (rid, chunk["text"]))
         self.con.commit()
 
-    def load_vectors(self):
+    def load_vectors(self, model_id=None):
         import numpy as np
-        rows = self.con.execute(
-            "SELECT rowid, vector FROM docs WHERE vector IS NOT NULL ORDER BY rowid").fetchall()
+        if model_id is None:
+            rows = self.con.execute(
+                "SELECT rowid, vector FROM docs WHERE vector IS NOT NULL ORDER BY rowid").fetchall()
+        else:   # defense-in-depth: stack only the requested model's vectors -> never mixed dims
+            rows = self.con.execute(
+                "SELECT rowid, vector FROM docs WHERE vector IS NOT NULL AND model_id = ? "
+                "ORDER BY rowid", (model_id,)).fetchall()
         if not rows:
             return [], np.zeros((0, 0), dtype=np.float32)
         rowids = [r["rowid"] for r in rows]
