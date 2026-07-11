@@ -33,17 +33,14 @@ def test_artifact_for_unknown_platform_is_none():
     spec = for_capability_tier("embedding", "light")
     assert spec.artifact_for("plan9-sparc") is None
 
-def test_bge_small_zh_resolves_to_onnx_source():
-    # BAAI's official repo (ModelScope + HF) is PyTorch-only, no .onnx — the
-    # source_urls must point at the ONNX-bearing mirror (Xenova), not BAAI.
+def test_bge_small_zh_is_zero_url_fastembed_managed():
+    # Embedding models are fetched by fastembed by model-NAME from its own catalog,
+    # so model-manager does not download them — the artifact is a zero-URL marker
+    # (ensure() just mkdirs the dir). model-manager still owns the tier CHOICE.
     spec = for_capability_tier("embedding", "light")
     assert spec is not None
     assert spec.id == "bge-small-zh-v1.5"
     assert spec.runtime == "onnx"
     art = spec.artifact_for("any")
     assert art is not None
-    assert any("Xenova/bge-small-zh-v1.5" in u for u in art.source_urls)
-    assert not any("BAAI/bge-small-zh-v1.5" in u for u in art.source_urls)
-    # ModelScope-first convention: modelscope:// entry precedes the HF fallback.
-    assert art.source_urls[0].startswith("modelscope://")
-    assert any(u.startswith("https://huggingface.co/Xenova/") for u in art.source_urls)
+    assert art.source_urls == []

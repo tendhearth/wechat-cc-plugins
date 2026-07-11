@@ -18,7 +18,7 @@ def test_high_preset_switches_all(tmp_path):
     mm = ModelManager(tmp_path, platform="win-x64")
     mm.set_preset("high")
     assert mm.resolve("asr").id == "whisper-large-v3"
-    assert mm.resolve("embedding").id == "bge-m3"
+    assert mm.resolve("embedding").id == "jina-embeddings-v2-base-zh"
     assert mm.resolve("vlm").id == "paddleocr-vl"
 
 def test_per_capability_override_wins(tmp_path):
@@ -30,7 +30,7 @@ def test_per_capability_override_wins(tmp_path):
 def test_override_persists_across_instances(tmp_path):
     ModelManager(tmp_path, platform="win-x64").set_choice("embedding", "high")
     mm2 = ModelManager(tmp_path, platform="win-x64")
-    assert mm2.resolve("embedding").id == "bge-m3"
+    assert mm2.resolve("embedding").id == "jina-embeddings-v2-base-zh"
 
 def test_set_choice_vlm_light_means_off(tmp_path):
     mm = ModelManager(tmp_path, platform="win-x64")
