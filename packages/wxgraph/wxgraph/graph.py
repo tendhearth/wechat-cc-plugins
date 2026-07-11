@@ -2,6 +2,7 @@
 import glob
 import os
 import sqlite3
+from collections import Counter
 from pathlib import Path
 
 from .source import iter_messages, detect_owner, _ro
@@ -34,13 +35,22 @@ def _source_max_mtime(state_dir):
     return mt
 
 
+def _invert_display(display_map):
+    """display -> username, DROPPING any display shared by >1 contact. Per spec §7 we
+    do not disambiguate across identical nicknames: an ambiguous display resolves to
+    nobody (its quote-edge is dropped) rather than being misattributed to one arbitrary
+    contact. Exact signals (atuserlist wxids, refermsg chatusr) are unaffected."""
+    counts = Counter(display_map.values())
+    return {disp: un for un, disp in display_map.items() if counts[disp] == 1}
+
+
 def build(state_dir, now, weights=None):
     weights = weights or DEFAULT_WEIGHTS
     messages = list(iter_messages(state_dir))
     owner = detect_owner(messages)
     display_map = load_display_map(state_dir)
     profiles = build_profiles(messages, owner, now, weights)
-    display_to_un = {v: k for k, v in display_map.items()}
+    display_to_un = _invert_display(display_map)
     edges = build_mention_edges(messages, owner, display_to_un)
     store = GraphStore(state_dir)
     try:
