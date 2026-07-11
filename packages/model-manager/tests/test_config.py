@@ -6,12 +6,12 @@ def test_default_config_when_missing(tmp_path):
     assert cfg.overrides == {}
 
 def test_save_then_load_roundtrip(tmp_path):
-    cfg = Config(preset="high", overrides={"asr": "sensevoice-small-q8"})
+    cfg = Config(preset="high", overrides={"asr": "whisper-small"})
     save_config(tmp_path, cfg)
     assert config_path(tmp_path).exists()
     got = load_config(tmp_path)
     assert got.preset == "high"
-    assert got.overrides == {"asr": "sensevoice-small-q8"}
+    assert got.overrides == {"asr": "whisper-small"}
 
 def test_corrupt_file_falls_back_to_default(tmp_path):
     p = config_path(tmp_path)
