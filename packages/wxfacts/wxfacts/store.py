@@ -20,7 +20,12 @@ class FactStore:
             "UNIQUE(contact, predicate, value))")
         self.con.execute(
             "CREATE TABLE IF NOT EXISTS extraction_state ("
-            "contact TEXT PRIMARY KEY, last_ts INTEGER, updated_at INTEGER)")
+            "contact TEXT PRIMARY KEY, last_ts INTEGER, last_local_id INTEGER DEFAULT 0, "
+            "updated_at INTEGER)")
+        try:   # migrate DBs that predate the (ts, local_id) cursor
+            self.con.execute("ALTER TABLE extraction_state ADD COLUMN last_local_id INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
         self.con.commit()
 
     def _row(self, r):
@@ -59,21 +64,24 @@ class FactStore:
         return "merged"
 
     def get_watermark(self, contact):
+        # (ts, local_id) cursor: WeChat create_time is seconds, so ts alone can't order
+        # a burst; local_id breaks ties so a late same-second message isn't skipped.
         r = self.con.execute(
-            "SELECT last_ts FROM extraction_state WHERE contact=?", (contact,)).fetchone()
-        return r[0] if r else 0
+            "SELECT last_ts, last_local_id FROM extraction_state WHERE contact=?", (contact,)).fetchone()
+        return (r[0], r[1]) if r else (0, 0)
 
-    def advance_watermark(self, contact, ts, now):
-        new = max(self.get_watermark(contact), int(ts))
+    def advance_watermark(self, contact, ts, local_id, now):
+        new = max(self.get_watermark(contact), (int(ts), int(local_id)))   # monotonic on the tuple
         self.con.execute(
-            "INSERT INTO extraction_state(contact,last_ts,updated_at) VALUES(?,?,?) "
-            "ON CONFLICT(contact) DO UPDATE SET last_ts=excluded.last_ts, updated_at=excluded.updated_at",
-            (contact, new, now))
+            "INSERT INTO extraction_state(contact,last_ts,last_local_id,updated_at) VALUES(?,?,?,?) "
+            "ON CONFLICT(contact) DO UPDATE SET last_ts=excluded.last_ts, "
+            "last_local_id=excluded.last_local_id, updated_at=excluded.updated_at",
+            (contact, new[0], new[1], now))
         self.con.commit()
 
     def all_watermarks(self):
-        return {r["contact"]: r["last_ts"]
-                for r in self.con.execute("SELECT contact,last_ts FROM extraction_state")}
+        return {r["contact"]: (r["last_ts"], r["last_local_id"])
+                for r in self.con.execute("SELECT contact,last_ts,last_local_id FROM extraction_state")}
 
     def facts_for(self, contact, status="active"):
         rows = self.con.execute(

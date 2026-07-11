@@ -34,11 +34,15 @@ def test_merge_does_not_overwrite_status(tmp_path):
 
 def test_watermark_monotonic(tmp_path):
     s = FactStore(tmp_path)
-    assert s.get_watermark("a") == 0
-    s.advance_watermark("a", 100, now=1)
-    s.advance_watermark("a", 50, now=2)                   # lower -> ignored
-    assert s.get_watermark("a") == 100
-    assert s.all_watermarks() == {"a": 100}
+    assert s.get_watermark("a") == (0, 0)
+    s.advance_watermark("a", 100, 10, now=1)
+    s.advance_watermark("a", 50, 99, now=2)               # lower ts -> ignored
+    assert s.get_watermark("a") == (100, 10)
+    s.advance_watermark("a", 100, 12, now=3)              # same ts, higher local_id -> advances
+    assert s.get_watermark("a") == (100, 12)
+    s.advance_watermark("a", 100, 5, now=4)               # same ts, lower local_id -> ignored
+    assert s.get_watermark("a") == (100, 12)
+    assert s.all_watermarks() == {"a": (100, 12)}
     s.close()
 
 

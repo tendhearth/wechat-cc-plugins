@@ -76,23 +76,46 @@ def test_find_and_status(tmp_path):
     s.close()
 
 
-def test_same_ts_at_limit_boundary_not_dropped(tmp_path):
-    # two messages share ts at the limit cut -> the batch must extend to include the
-    # same-ts message, else advancing the watermark to covers_until_ts drops it forever.
+def _msg_db(tmp_path, rows):
     dec = Path(tmp_path) / "out" / "decrypted"; dec.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(str(dec / "message_0.sqlite"))
     con.execute("CREATE TABLE Name2Id(rowid INTEGER PRIMARY KEY, user_name TEXT, is_session INTEGER)")
     con.executemany("INSERT INTO Name2Id VALUES(?,?,?)", [(1, "wxid_me", 0), (2, "wxid_a", 1)])
     con.execute('CREATE TABLE "%s"(local_id INTEGER, local_type INTEGER, real_sender_id INTEGER, '
                 'create_time INTEGER, server_id INTEGER, message_content)' % _tbl("wxid_a"))
-    con.executemany('INSERT INTO "%s" VALUES(?,?,?,?,?,?)' % _tbl("wxid_a"),
-                    [(10, 1, 1, 100, 0, "m1"), (11, 1, 2, 110, 0, "m2"), (12, 1, 2, 110, 0, "m3")])
+    con.executemany('INSERT INTO "%s" VALUES(?,?,?,?,?,?)' % _tbl("wxid_a"), rows)
     con.commit(); con.close()
+
+
+def test_same_ts_at_limit_boundary_not_dropped(tmp_path):
+    # limit cuts mid-second (11 & 12 share ts 110). The (ts, local_id) cursor serves
+    # 11 in batch 1 and 12 in batch 2 -- nothing is skipped at the second boundary.
+    _msg_db(tmp_path, [(10, 1, 1, 100, 0, "m1"), (11, 1, 2, 110, 0, "m2"), (12, 1, 2, 110, 0, "m3")])
+    A = _tbl("wxid_a")
     s = FactStore(tmp_path)
-    b = F.next_batch(s, tmp_path, "wxid_a", 2)          # limit 2 lands mid-110-run
-    keys = [m["msg_key"] for m in b["messages"]]
-    assert "%s:12" % _tbl("wxid_a") in keys              # same-ts msg included, not dropped
-    assert b["covers_until_ts"] == 110
+    b1 = F.next_batch(s, tmp_path, "wxid_a", 2)
+    assert [m["msg_key"] for m in b1["messages"]] == ["%s:10" % A, "%s:11" % A]
+    assert b1["covers_until_ts"] == 110
+    F.record(s, b1["batch_id"], [], now=1)
+    b2 = F.next_batch(s, tmp_path, "wxid_a", 2)          # same-second 12 served next, not dropped
+    assert [m["msg_key"] for m in b2["messages"]] == ["%s:12" % A]
+    F.record(s, b2["batch_id"], [], now=1)
+    assert F.next_batch(s, tmp_path, "wxid_a", 2) == {"done": True}
+    s.close()
+
+
+def test_late_same_second_message_not_skipped(tmp_path):
+    # A message arriving LATER at a ts already fully watermarked must NOT be skipped --
+    # the exact bug the (ts, local_id) cursor fixes (a ts-only watermark would skip it).
+    _msg_db(tmp_path, [(10, 1, 1, 100, 0, "m1"), (11, 1, 2, 110, 0, "m2")])
+    A = _tbl("wxid_a")
+    s = FactStore(tmp_path)
+    b = F.next_batch(s, tmp_path, "wxid_a", 40)          # serves 10,11; covers (110,11)
     F.record(s, b["batch_id"], [], now=1)
-    assert F.next_batch(s, tmp_path, "wxid_a", 2) == {"done": True}   # nothing skipped
+    assert F.next_batch(s, tmp_path, "wxid_a", 40) == {"done": True}
+    con = sqlite3.connect(str(Path(tmp_path) / "out" / "decrypted" / "message_0.sqlite"))
+    con.execute('INSERT INTO "%s" VALUES(?,?,?,?,?,?)' % A, (20, 1, 2, 110, 0, "late-m"))
+    con.commit(); con.close()
+    b2 = F.next_batch(s, tmp_path, "wxid_a", 40)
+    assert [m["msg_key"] for m in b2["messages"]] == ["%s:20" % A]   # (110,20) > (110,11) -> served
     s.close()

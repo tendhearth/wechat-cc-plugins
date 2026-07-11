@@ -43,15 +43,16 @@ def iter_1to1_messages(state_dir):
                         continue
                     yield {"msg_key": "%s:%s" % (tbl, r["local_id"]), "conversation": conv,
                            "sender_un": n2i.get(r["real_sender_id"], ""),
-                           "ts": int(r["create_time"] or 0), "text": text}
+                           "ts": int(r["create_time"] or 0), "local_id": int(r["local_id"] or 0),
+                           "text": text}
         finally:
             con.close()
 
 
-def encode_batch_id(contact, covers_until_ts):
-    return json.dumps({"c": contact, "u": int(covers_until_ts)}, ensure_ascii=False)
+def encode_batch_id(contact, covers_ts, covers_local_id):
+    return json.dumps({"c": contact, "u": int(covers_ts), "l": int(covers_local_id)}, ensure_ascii=False)
 
 
 def decode_batch_id(batch_id):
     d = json.loads(batch_id)
-    return d["c"], int(d["u"])
+    return d["c"], int(d["u"]), int(d.get("l", 0))   # "l" optional for pre-cursor batch_ids
