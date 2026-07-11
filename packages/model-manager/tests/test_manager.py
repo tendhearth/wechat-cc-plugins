@@ -49,7 +49,7 @@ def test_set_choice_off_only_valid_for_vlm(tmp_path):
 def test_set_choice_rejects_wrong_capability_model(tmp_path):
     mm = ModelManager(tmp_path, platform="win-x64")
     with pytest.raises(ValueError):
-        mm.set_choice("asr", "bge-m3")   # embedding model, not asr
+        mm.set_choice("asr", "bge-small-zh-v1.5")   # a real embedding model, not asr
 
 def test_ensure_downloads_resolved_model(tmp_path):
     mm = ModelManager(tmp_path, platform="win-x64")
