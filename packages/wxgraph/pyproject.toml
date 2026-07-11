@@ -1,0 +1,9 @@
+[project]
+name = "wxgraph"
+version = "0.1.0"
+description = "Local WeChat relationship-graph / CRM (structured layer) for wechat-cc"
+requires-python = ">=3.10"
+dependencies = ["zstandard>=0.22"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
