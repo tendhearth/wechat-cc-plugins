@@ -64,9 +64,14 @@ def resolve_name(store, name):
     if not name:
         return None, []
     contacts = store.all_contacts()
-    for c in contacts:                       # exact display or username
-        if c["display"] == name or c["username"] == name:
+    for c in contacts:                       # username is a unique id -> exact match wins
+        if c["username"] == name:
             return c["username"], []
+    disp = [c for c in contacts if c["display"] == name]
+    if len(disp) == 1:
+        return disp[0]["username"], []
+    if len(disp) > 1:                        # colliding display -> disambiguate, never guess
+        return None, [{"username": c["username"], "display": c["display"]} for c in disp]
     subs = [c for c in contacts if name in (c["display"] or "") or name in c["username"]]
     if len(subs) == 1:
         return subs[0]["username"], []
@@ -90,7 +95,8 @@ _SORT = {"closeness": lambda c: c["closeness"], "volume": lambda c: c["total"],
 
 def top_contacts(store, by, limit=20, kind="person"):
     key = _SORT.get(by, _SORT["closeness"])
-    contacts = store.all_contacts()          # all are 1:1 persons in v1
+    want_group = (kind == "group")           # v1 profiles only persons -> group => []
+    contacts = [c for c in store.all_contacts() if bool(c["is_group"]) == want_group]
     return sorted(contacts, key=key, reverse=True)[:limit]
 
 

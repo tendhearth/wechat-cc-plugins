@@ -11,7 +11,7 @@ TOOLS = [
          "by": {"type": "string"}, "limit": {"type": "integer"}, "kind": {"type": "string"}}}},
     {"name": "relationship_subgraph", "description": "以我为中心的关系子图(节点+边),给 agent 推理/渲染",
      "inputSchema": {"type": "object", "properties": {
-         "center": {"type": "string"}, "limit": {"type": "integer"}}}},
+         "limit": {"type": "integer"}}}},
     {"name": "connectors", "description": "两个联系人在我世界里的连接(共群+互相提及)",
      "inputSchema": {"type": "object", "properties": {
          "name_a": {"type": "string"}, "name_b": {"type": "string"}}, "required": ["name_a", "name_b"]}},

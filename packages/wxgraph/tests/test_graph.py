@@ -100,6 +100,21 @@ def test_build_drops_edges_on_ambiguous_displayname(tmp_path):
     cc.commit(); cc.close()
     res = build(tmp_path, now=12 * DAY)
     assert res["edges"] == 0
+    # the QUERY path must also refuse to guess: an exact colliding display -> unresolved
+    s = GraphStore(tmp_path)
+    un, cands = resolve_name(s, "同名")
+    assert un is None and {c["username"] for c in cands} == {"wxid_x", "wxid_y"}
+    assert contact_profile(s, "同名")["resolved"] is False   # not the wrong person's stats
+    s.close()
+
+
+def test_top_contacts_kind_group_empty_in_v1(tmp_path):
+    _seed(tmp_path)
+    build(tmp_path, now=92 * DAY)
+    s = GraphStore(tmp_path)
+    assert top_contacts(s, "closeness", 10, "group") == []          # no group contacts in v1
+    assert len(top_contacts(s, "closeness", 10, "person")) == 2
+    s.close()
 
 def test_status_reports_stale(tmp_path):
     _seed(tmp_path)
