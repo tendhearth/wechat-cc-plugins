@@ -35,7 +35,7 @@ def main():
     except ImportError:
         sys.exit("!! 找不到 model-manager（应在 %s）。确认它与 wxmedia 一同放在 monorepo/打包中。"
                  % model_manager_dir())
-    print("✓ 依赖就绪。ASR 模型在首次 voice_backfill 时按所选档懒下载（默认轻量 SenseVoice）。")
+    print("✓ 依赖就绪。ASR 模型在首次 voice_backfill 时按所选档懒下载（默认轻量 whisper-small via faster-whisper）。")
 
 
 if __name__ == "__main__":
