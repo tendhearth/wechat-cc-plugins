@@ -3,12 +3,12 @@ from wxmedia.store import DerivedStore
 def test_put_then_get_and_has(tmp_path):
     s = DerivedStore(tmp_path)
     assert s.has("100") is False
-    s.put("100", "voice", "你好", "sensevoice-small-q8", 1720000000)
+    s.put("100", "voice", "你好", "whisper-small", 1720000000)
     assert s.has("100") is True
     row = s.get("100")
     assert row["text"] == "你好"
     assert row["kind"] == "voice"
-    assert row["model_id"] == "sensevoice-small-q8"
+    assert row["model_id"] == "whisper-small"
     s.close()
 
 def test_put_is_upsert(tmp_path):

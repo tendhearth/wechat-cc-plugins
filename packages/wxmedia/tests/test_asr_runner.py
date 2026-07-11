@@ -1,60 +1,48 @@
-from wxmedia.asr import SenseVoiceRunner, _parse_output
+import pytest
+
+from wxmedia.asr import FasterWhisperRunner, _default_transcribe, _WHISPER
 
 
 class FakeMM:
     def resolve(self, cap):
         class S:
-            id = "sensevoice-small-q8"
-            runtime = "llama.cpp"
+            id = "whisper-small"
+            runtime = "faster-whisper"
         return S()
 
     def ensure(self, cap, **kw):
         from pathlib import Path
-        return Path("/models/asr/sensevoice-small-q8")
+        return Path("/models/asr/whisper-small")
 
 
-def test_model_id_from_manager():
-    r = SenseVoiceRunner(FakeMM(), runner_cmd=lambda d, w: ["echo", "hi"])
-    assert r.model_id == "sensevoice-small-q8"
-
-
-def test_transcribe_runs_cmd_and_parses(monkeypatch):
+def test_runner_model_id_and_delegates_to_fn():
     captured = {}
 
-    def fake_run(cmd, **kw):
-        captured["cmd"] = cmd
+    def fake_fn(model_dir, model_id, wav_path):
+        captured["args"] = (str(model_dir), model_id, wav_path)
+        return "你好世界"
 
-        class R:
-            returncode = 0
-            stdout = "transcript: 你好世界\n"
-            stderr = ""
-
-        return R()
-
-    monkeypatch.setattr("wxmedia.asr.subprocess.run", fake_run)
-    r = SenseVoiceRunner(FakeMM(), runner_cmd=lambda d, w: ["asr", str(d), w])
-    out = r.transcribe("/tmp/100.wav")
-    assert out == "你好世界"
-    assert captured["cmd"] == ["asr", "/models/asr/sensevoice-small-q8", "/tmp/100.wav"]
+    r = FasterWhisperRunner(FakeMM(), transcribe_fn=fake_fn)
+    assert r.model_id == "whisper-small"
+    assert r.transcribe("/tmp/100.wav") == "你好世界"
+    assert captured["args"] == ("/models/asr/whisper-small", "whisper-small", "/tmp/100.wav")
 
 
-def test_parse_output_strips_label_and_ws():
-    assert _parse_output("transcript: 在吗 \n") == "在吗"
-    assert _parse_output("no label here") == "no label here"
+def test_default_transcribe_unmapped_model_raises(tmp_path):
+    # An asr model id with no faster-whisper mapping must fail clearly BEFORE any
+    # faster_whisper import — so this runs even without faster-whisper installed.
+    d = tmp_path / "nope-model"
+    d.mkdir()
+    with pytest.raises(ValueError, match="no faster-whisper mapping"):
+        _default_transcribe(d, "nope-model", "/tmp/x.wav")
 
 
-def test_transcribe_raises_on_nonzero(monkeypatch):
-    def fake_run(cmd, **kw):
-        class R:
-            returncode = 1
-            stdout = ""
-            stderr = "err"
-
-        return R()
-
-    monkeypatch.setattr("wxmedia.asr.subprocess.run", fake_run)
-    r = SenseVoiceRunner(FakeMM(), runner_cmd=lambda d, w: ["x"])
-    import pytest
-
-    with pytest.raises(RuntimeError):
-        r.transcribe("/tmp/1.wav")
+def test_whisper_map_covers_every_registry_asr_tier():
+    # Guards the "added/renamed a tier, forgot the faster-whisper mapping" drift.
+    from wxmedia._deps import ensure_model_manager
+    ensure_model_manager()
+    from model_manager.registry import for_capability_tier
+    for tier in ("light", "high"):
+        spec = for_capability_tier("asr", tier)
+        assert spec is not None
+        assert spec.id in _WHISPER, "asr %s tier id %r missing from wxmedia.asr._WHISPER" % (tier, spec.id)

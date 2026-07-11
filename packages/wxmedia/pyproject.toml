@@ -7,7 +7,7 @@ name = "wxmedia"
 version = "0.1.0"
 description = "WeChat media->text (voice ASR) enrichment plugin for wechat-cc"
 requires-python = ">=3.10"
-dependencies = ["pilk"]
+dependencies = ["pilk", "faster-whisper>=1.0"]
 
 [project.optional-dependencies]
 test = ["pytest>=7"]

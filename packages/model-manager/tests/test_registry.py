@@ -2,20 +2,26 @@ from model_manager.registry import (
     by_id, for_capability_tier, MODELS, ModelSpec, CAPABILITIES, PRESETS,
 )
 
-def test_sensevoice_is_light_asr_and_cross_platform():
+def test_whisper_small_is_zero_url_light_asr():
+    # ASR models are fetched by faster-whisper by model-NAME from its own catalog,
+    # so model-manager does not download them — the artifact is a zero-URL marker.
     spec = for_capability_tier("asr", "light")
     assert spec is not None
-    assert spec.id == "sensevoice-small-q8"
-    # cross-platform GGUF: resolvable on both mac and windows
-    assert spec.artifact_for("mac-arm64") is not None
-    assert spec.artifact_for("win-x64") is not None
+    assert spec.id == "whisper-small"
+    assert spec.runtime == "faster-whisper"
+    art = spec.artifact_for("any")
+    assert art is not None
+    assert art.source_urls == []
 
-def test_asr_high_is_per_os_distinct():
+
+def test_whisper_large_is_zero_url_high_asr():
     spec = for_capability_tier("asr", "high")
     assert spec is not None
-    # high-tier ASR resolves to a real artifact on each OS
-    assert spec.artifact_for("mac-arm64") is not None
-    assert spec.artifact_for("win-x64") is not None
+    assert spec.id == "whisper-large-v3"
+    assert spec.runtime == "faster-whisper"
+    art = spec.artifact_for("any")
+    assert art is not None
+    assert art.source_urls == []
 
 def test_by_id_roundtrip():
     for m in MODELS:

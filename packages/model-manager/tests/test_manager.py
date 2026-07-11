@@ -5,7 +5,7 @@ def _fake_fetch(url, dest): dest.write_bytes(b"w")
 
 def test_resolve_light_defaults(tmp_path):
     mm = ModelManager(tmp_path, platform="win-x64")
-    assert mm.resolve("asr").id == "sensevoice-small-q8"
+    assert mm.resolve("asr").id == "whisper-small"
     assert mm.resolve("embedding").id == "bge-small-zh-v1.5"
     assert mm.resolve("vlm") is None            # light == off
     assert mm.resolve("ocr").id == "ppocr-v6-small"
@@ -54,7 +54,8 @@ def test_set_choice_rejects_wrong_capability_model(tmp_path):
 def test_ensure_downloads_resolved_model(tmp_path):
     mm = ModelManager(tmp_path, platform="win-x64")
     d = mm.ensure("asr", fetcher=_fake_fetch)
-    assert (d / "model.bin").exists()
+    # ASR is zero-URL (faster-whisper managed), so ensure() creates .done marker, not model.bin
+    assert (d / ".done").exists()
 
 def test_ensure_off_capability_returns_none(tmp_path):
     mm = ModelManager(tmp_path, platform="win-x64")   # vlm off in light
@@ -65,7 +66,7 @@ def test_status_reports_selection_and_presence(tmp_path):
     st = mm.status()
     assert st["preset"] == "light"
     assert st["platform"] == "win-x64"
-    assert st["capabilities"]["asr"]["selected_id"] == "sensevoice-small-q8"
+    assert st["capabilities"]["asr"]["selected_id"] == "whisper-small"
     assert st["capabilities"]["asr"]["present"] is False
     mm.ensure("asr", fetcher=_fake_fetch)
     assert mm.status()["capabilities"]["asr"]["present"] is True

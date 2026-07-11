@@ -35,33 +35,22 @@ class ModelSpec:
 
 
 MODELS = (
-    # --- ASR ---
+    # --- asr ---
+    # ASR runs through faster-whisper (see wxmedia/asr.py), which fetches the Whisper
+    # model by model-NAME from its own catalog and handles decode/inference. So
+    # model-manager does NOT download asr files: artifacts are zero-URL markers
+    # (ensure() just mkdirs the dir) and model-manager owns only the tier CHOICE
+    # (resolve/set_model). wxmedia maps these ids -> faster-whisper model names.
     ModelSpec(
-        id="sensevoice-small-q8", capability="asr", tier="light", runtime="llama.cpp",
+        id="whisper-small", capability="asr", tier="light", runtime="faster-whisper",
         artifacts=(
-            Artifact("any",
-                     ["modelscope://iic/SenseVoiceSmall-GGUF",
-                      "https://huggingface.co/funasr/SenseVoiceSmall-GGUF"],
-                     size_mb=254),
+            Artifact("any", [], size_mb=500),
         ),
     ),
     ModelSpec(
-        id="whisper-large-v3", capability="asr", tier="high", runtime="whisper.cpp",
+        id="whisper-large-v3", capability="asr", tier="high", runtime="faster-whisper",
         artifacts=(
-            Artifact("mac-arm64",
-                     ["modelscope://argmaxinc/whisperkit-coreml-large-v3",
-                      "https://huggingface.co/argmaxinc/whisperkit-coreml"],
-                     size_mb=600),
-            Artifact("win-x64",
-                     ["modelscope://ggerganov/whisper.cpp/ggml-large-v3-q5_0.bin",
-                      "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-q5_0.bin"],
-                     size_mb=1080),
-            Artifact("mac-x64",
-                     ["https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-q5_0.bin"],
-                     size_mb=1080),
-            Artifact("linux-x64",
-                     ["https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-q5_0.bin"],
-                     size_mb=1080),
+            Artifact("any", [], size_mb=3000),
         ),
     ),
     # --- embedding ---

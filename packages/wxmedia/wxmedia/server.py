@@ -109,12 +109,12 @@ def main():
     ensure_model_manager()          # resolve the sibling model-manager package from the monorepo
     from model_manager import ModelManager
     from .pipeline import transcribe_all
-    from .asr import SenseVoiceRunner
+    from .asr import FasterWhisperRunner
     manager = ModelManager(state_dir)
     deps = {
         "state_dir": state_dir,
         "manager": manager,
-        "transcribe": lambda: transcribe_all(state_dir, SenseVoiceRunner(manager)),
+        "transcribe": lambda: transcribe_all(state_dir, FasterWhisperRunner(manager)),
     }
     sys.stderr.write("[wxmedia] ready\n")
     for line in sys.stdin:
