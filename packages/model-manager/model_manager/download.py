@@ -60,6 +60,13 @@ def ensure(models_root, spec, platform, fetcher=None, confirm=None) -> Path:
         raise DownloadDeclined("user declined download of %s (%d MB)" % (spec.id, art.size_mb))
 
     fetch = fetcher or _default_fetcher
+    # Supply-chain integrity: refuse to pull an artifact over the real network unless it
+    # declares a sha256 to verify against. An explicitly injected `fetcher` (tests, or a
+    # caller taking responsibility) is exempt; only the default network fetcher is gated.
+    if fetcher is None and art.sha256 is None:
+        raise DownloadFailed(
+            "refusing to download %s over the network without a sha256 (supply-chain "
+            "integrity) — pin a sha256 for this artifact in the registry" % spec.id)
     dest = d / "model.bin"
     last_err = None
     for url in art.source_urls:
