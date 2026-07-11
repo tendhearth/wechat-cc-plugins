@@ -1,0 +1,9 @@
+[project]
+name = "wxfacts"
+version = "0.1.0"
+description = "Agent-driven local knowledge/CRM extraction store for wechat-cc"
+requires-python = ">=3.10"
+dependencies = ["zstandard>=0.22"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
