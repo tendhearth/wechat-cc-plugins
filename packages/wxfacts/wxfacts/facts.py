@@ -59,9 +59,19 @@ def next_batch(store, state_dir, contact=None, limit=40):
             if n > best_n:
                 contact, best_n = c, n
         msgs = backlog(contact) if contact else []
-    msgs = msgs[:limit]
+    full = msgs
+    msgs = full[:limit]
     if not msgs:
         return {"done": True}
+    # Extend past the limit to include every remaining message sharing the last
+    # served ts. WeChat create_time is in SECONDS, so bursts share a ts; without
+    # this, advancing the watermark to covers_until_ts would skip a same-ts message
+    # left just past the limit cut — it would never be served again (silent loss).
+    last_ts = msgs[-1]["ts"]
+    i = len(msgs)
+    while i < len(full) and full[i]["ts"] == last_ts:
+        msgs.append(full[i])
+        i += 1
     covers = max(m["ts"] for m in msgs)
     dmap = _display_map(state_dir)
     return {"batch_id": encode_batch_id(contact, covers), "contact": contact,

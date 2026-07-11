@@ -74,3 +74,25 @@ def test_find_and_status(tmp_path):
     st = F.extraction_status(s, tmp_path)
     assert st["facts_by_kind"] == {"obligation": 1}
     s.close()
+
+
+def test_same_ts_at_limit_boundary_not_dropped(tmp_path):
+    # two messages share ts at the limit cut -> the batch must extend to include the
+    # same-ts message, else advancing the watermark to covers_until_ts drops it forever.
+    dec = Path(tmp_path) / "out" / "decrypted"; dec.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(str(dec / "message_0.sqlite"))
+    con.execute("CREATE TABLE Name2Id(rowid INTEGER PRIMARY KEY, user_name TEXT, is_session INTEGER)")
+    con.executemany("INSERT INTO Name2Id VALUES(?,?,?)", [(1, "wxid_me", 0), (2, "wxid_a", 1)])
+    con.execute('CREATE TABLE "%s"(local_id INTEGER, local_type INTEGER, real_sender_id INTEGER, '
+                'create_time INTEGER, server_id INTEGER, message_content)' % _tbl("wxid_a"))
+    con.executemany('INSERT INTO "%s" VALUES(?,?,?,?,?,?)' % _tbl("wxid_a"),
+                    [(10, 1, 1, 100, 0, "m1"), (11, 1, 2, 110, 0, "m2"), (12, 1, 2, 110, 0, "m3")])
+    con.commit(); con.close()
+    s = FactStore(tmp_path)
+    b = F.next_batch(s, tmp_path, "wxid_a", 2)          # limit 2 lands mid-110-run
+    keys = [m["msg_key"] for m in b["messages"]]
+    assert "%s:12" % _tbl("wxid_a") in keys              # same-ts msg included, not dropped
+    assert b["covers_until_ts"] == 110
+    F.record(s, b["batch_id"], [], now=1)
+    assert F.next_batch(s, tmp_path, "wxid_a", 2) == {"done": True}   # nothing skipped
+    s.close()
