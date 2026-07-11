@@ -8,13 +8,13 @@
   "spawn": {
     "command": "python3",
     "args": ["-m", "wxsearch.server"],
-    "env": { "PYTHONPATH": "${pluginDir}", "WXVAULT_STATE_DIR": "${dataDir}" }
+    "env": { "PYTHONPATH": "${pluginDir}", "WXVAULT_STATE_DIR": "${dataDir}/../wxvault" }
   },
-  "healthcheck": { "requiresPaths": ["${dataDir}/out/decrypted"] },
+  "healthcheck": { "requiresPaths": ["${dataDir}/../wxvault/out/decrypted"] },
   "setup": {
     "command": "python3",
     "args": ["${pluginDir}/setup.py"],
-    "env": { "WXVAULT_STATE_DIR": "${dataDir}" }
+    "env": { "WXVAULT_STATE_DIR": "${dataDir}/../wxvault" }
   },
   "requires": {
     "python3": "required（依赖 numpy + model-manager；embedding 运行时按档下载）",

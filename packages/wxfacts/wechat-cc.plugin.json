@@ -8,13 +8,13 @@
   "spawn": {
     "command": "python3",
     "args": ["-m", "wxfacts.server"],
-    "env": { "PYTHONPATH": "${pluginDir}", "WXVAULT_STATE_DIR": "${dataDir}" }
+    "env": { "PYTHONPATH": "${pluginDir}", "WXVAULT_STATE_DIR": "${dataDir}/../wxvault" }
   },
-  "healthcheck": { "requiresPaths": ["${dataDir}/out/decrypted"] },
+  "healthcheck": { "requiresPaths": ["${dataDir}/../wxvault/out/decrypted"] },
   "setup": {
     "command": "python3",
     "args": ["${pluginDir}/setup.py"],
-    "env": { "WXVAULT_STATE_DIR": "${dataDir}" }
+    "env": { "WXVAULT_STATE_DIR": "${dataDir}/../wxvault" }
   },
   "requires": {
     "python3": "required(依赖 zstandard + 兄弟 wxgraph)",
