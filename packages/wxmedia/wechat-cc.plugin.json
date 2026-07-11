@@ -17,7 +17,7 @@
     "env": { "WXVAULT_STATE_DIR": "${dataDir}/../wxvault" }
   },
   "requires": {
-    "python3": "required（依赖 pilk + model-manager；ASR 运行时按所选档下载）",
+    "python3": "required（依赖 pilk + faster-whisper + model-manager；ASR 模型按所选档懒下载）",
     "setup": "python3 ${pluginDir}/setup.py：装依赖 + 选模型档（轻量/高精度）。语音源来自 wxvault 解密的 media_*.sqlite，需先跑 wxvault。"
   },
   "tools": ["voice_backfill", "get_media_text", "models_status", "set_model"]
