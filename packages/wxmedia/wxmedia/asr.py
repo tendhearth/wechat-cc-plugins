@@ -1,4 +1,5 @@
 """The ASR runner boundary. Concrete runners live behind this Protocol."""
+from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 
@@ -8,34 +9,31 @@ class AsrRunner(Protocol):
     def transcribe(self, wav_path: str) -> str: ...
 
 
-import re
-import subprocess
-from pathlib import Path
+_WHISPER = {"whisper-small": "small", "whisper-large-v3": "large-v3"}
+_cache = {}   # model_id -> WhisperModel (loading is expensive; reuse within a process)
 
 
-def _parse_output(stdout: str) -> str:
-    # SenseVoice/whisper.cpp print the transcript to stdout; strip an optional label.
-    text = stdout.strip()
-    m = re.match(r"^\s*(?:transcript|text)\s*:\s*(.*)$", text, re.IGNORECASE | re.DOTALL)
-    return (m.group(1) if m else text).strip()
+def _default_transcribe(model_dir, model_id, wav_path):
+    # faster-whisper fetches the model by name (into download_root=model_dir, once) and
+    # decodes/infers. The map check runs BEFORE the import so an unmapped model errors
+    # clearly without faster-whisper installed. language="zh" pinned (Whisper mis-detects
+    # very short clips); CPU int8 for laptop footprint.
+    if model_id not in _WHISPER:
+        raise ValueError("wxmedia: no faster-whisper mapping for asr model %r" % model_id)
+    from faster_whisper import WhisperModel
+    if model_id not in _cache:
+        _cache[model_id] = WhisperModel(_WHISPER[model_id], device="cpu",
+                                        compute_type="int8", download_root=str(model_dir))
+    segments, _info = _cache[model_id].transcribe(wav_path, language="zh")
+    return "".join(s.text for s in segments).strip()
 
 
-def _default_runner_cmd(model_dir: Path, wav_path: str) -> list:
-    # Expected SenseVoice-GGUF self-contained binary; VERIFY against the real binary.
-    binary = model_dir / ("sense-voice.exe" if __import__("os").name == "nt" else "sense-voice")
-    return [str(binary), "-m", str(model_dir / "model.bin"), "-f", wav_path, "--no-timestamps"]
-
-
-class SenseVoiceRunner:
-    def __init__(self, model_manager, runner_cmd=None):
+class FasterWhisperRunner:
+    def __init__(self, model_manager, transcribe_fn=None):
         spec = model_manager.resolve("asr")
         self.model_id = spec.id
         self._model_dir = Path(model_manager.ensure("asr"))
-        self._cmd = runner_cmd or _default_runner_cmd
+        self._fn = transcribe_fn or _default_transcribe
 
-    def transcribe(self, wav_path: str) -> str:
-        cmd = self._cmd(self._model_dir, wav_path)
-        proc = subprocess.run(cmd, capture_output=True, text=True)
-        if proc.returncode != 0:
-            raise RuntimeError("ASR failed (%s): %s" % (proc.returncode, proc.stderr[:200]))
-        return _parse_output(proc.stdout)
+    def transcribe(self, wav_path):
+        return self._fn(self._model_dir, self.model_id, wav_path)
