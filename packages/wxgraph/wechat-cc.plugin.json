@@ -1,0 +1,24 @@
+{
+  "name": "wxgraph",
+  "kind": "mcp",
+  "version": "0.1.0",
+  "minWechatCcVersion": "0.6.4",
+  "displayName": "关系图谱 (wxgraph)",
+  "description": "从本地微信历史构建每个联系人的关系画像与以我为中心的关系图(结构化统计,全本地不外连)。读 wxvault 解密产物。",
+  "spawn": {
+    "command": "python3",
+    "args": ["-m", "wxgraph.server"],
+    "env": { "PYTHONPATH": "${pluginDir}", "WXVAULT_STATE_DIR": "${dataDir}" }
+  },
+  "healthcheck": { "requiresPaths": ["${dataDir}/out/decrypted"] },
+  "setup": {
+    "command": "python3",
+    "args": ["${pluginDir}/setup.py"],
+    "env": { "WXVAULT_STATE_DIR": "${dataDir}" }
+  },
+  "requires": {
+    "python3": "required(依赖 zstandard)",
+    "setup": "python3 ${pluginDir}/setup.py:装 zstandard。先跑 wxvault 解密,再调 rebuild 建关系图。"
+  },
+  "tools": ["contact_profile", "top_contacts", "relationship_subgraph", "connectors", "rebuild", "graph_status"]
+}
