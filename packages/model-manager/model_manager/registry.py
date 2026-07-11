@@ -65,12 +65,19 @@ MODELS = (
         ),
     ),
     # --- embedding ---
+    # NOTE: BAAI's official repo (both ModelScope BAAI/bge-small-zh-v1.5 and HF
+    # BAAI/bge-small-zh-v1.5) is PyTorch-only (safetensors/.bin) — no .onnx.
+    # `Xenova/bge-small-zh-v1.5` has ready ONNX (onnx/model.onnx fp32 + tokenizer.json
+    # + vocab.txt + config.json), and ModelScope auto-mirrors that same HF repo at the
+    # identical namespace (verified: modelscope://Xenova/bge-small-zh-v1.5 has an
+    # onnx/ tree with model.onnx), so ModelScope-first still holds. sha256 left None —
+    # fill in from the real downloaded files when download.py is wired to this source.
     ModelSpec(
         id="bge-small-zh-v1.5", capability="embedding", tier="light", runtime="onnx",
         artifacts=(
             Artifact("any",
-                     ["modelscope://BAAI/bge-small-zh-v1.5",
-                      "https://huggingface.co/BAAI/bge-small-zh-v1.5"],
+                     ["modelscope://Xenova/bge-small-zh-v1.5",
+                      "https://huggingface.co/Xenova/bge-small-zh-v1.5"],
                      size_mb=100),
         ),
     ),
