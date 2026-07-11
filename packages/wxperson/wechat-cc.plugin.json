@@ -1,0 +1,24 @@
+{
+  "name": "wxperson",
+  "kind": "mcp",
+  "version": "0.1.0",
+  "minWechatCcVersion": "0.6.4",
+  "displayName": "人物简报 (wxperson)",
+  "description": "把某个联系人的关系画像、结构化事实、未了义务、近期消息组装成一份统一简报(全本地不外连)。想整体了解一个人时一次拿全。依赖 wxgraph/wxfacts/wxsearch。",
+  "spawn": {
+    "command": "python3",
+    "args": ["-m", "wxperson.server"],
+    "env": { "PYTHONPATH": "${pluginDir}", "WXVAULT_STATE_DIR": "${dataDir}/../wxvault" }
+  },
+  "healthcheck": { "requiresPaths": ["${dataDir}/../wxvault/out/decrypted"] },
+  "setup": {
+    "command": "python3",
+    "args": ["${pluginDir}/setup.py"],
+    "env": { "WXVAULT_STATE_DIR": "${dataDir}/../wxvault" }
+  },
+  "requires": {
+    "python3": "required(复用兄弟 wxgraph/wxfacts/wxsearch,无自有依赖)",
+    "setup": "python3 ${pluginDir}/setup.py:解析兄弟插件。先跑 wxvault 解密,建议也跑 wxgraph rebuild / wxsearch 索引 / wxfacts 抽取以填充各源。"
+  },
+  "tools": ["person_brief"]
+}
