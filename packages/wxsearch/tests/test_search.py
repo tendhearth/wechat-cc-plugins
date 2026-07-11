@@ -1,6 +1,8 @@
 import sqlite3
 import numpy as np
+import pytest
 from pathlib import Path
+from wxsearch.index import IndexStore
 from wxsearch.search import rrf, index_update, reindex, search
 
 def _msg_db(state_dir, rows):
@@ -71,3 +73,23 @@ def test_index_update_refuses_on_model_switch(tmp_path):
     # original index stays intact & queryable under its own model — no mixed-dim crash
     out = search(tmp_path, "石板大", KwEmbedder(), limit=5)
     assert out["vectors_stale"] is False and out["results"]
+
+def test_index_update_claims_model_before_persisting_vectors(tmp_path):
+    # A crash AFTER >=1 vector is committed must still leave meta['embed_model'] set,
+    # so a later switch to a different model is refused (no mixed-dimension vectors).
+    _msg_db(tmp_path, [(10,1,2,1,100,"grp:\n响水石板大米"), (11,1,2,2,101,"grp:\n今天天气不错")])
+    class FailSecondBatch(KwEmbedder):
+        calls = 0
+        def embed(self, texts):
+            FailSecondBatch.calls += 1
+            if FailSecondBatch.calls >= 2:
+                raise RuntimeError("boom")
+            return super().embed(texts)
+    with pytest.raises(RuntimeError):
+        index_update(tmp_path, FailSecondBatch(), batch=1)   # 2nd chunk -> 2nd embed call -> boom
+    s = IndexStore(tmp_path)
+    assert s.get_meta("embed_model") == "fake-embed"         # model claimed before the crash
+    assert s.count() == 1                                    # first chunk's vector was committed
+    s.close()
+    class Other(KwEmbedder): model_id = "other-model"
+    assert index_update(tmp_path, Other()).get("model_mismatch") is True   # guard now fires

@@ -28,6 +28,13 @@ def index_update(state_dir, runner, batch=64) -> dict:
             nonlocal indexed
             if not pending:
                 return
+            # Claim the embedding model in meta BEFORE persisting any vector. upsert
+            # commits per-row, so a crash mid-run (e.g. embed() raising on a later
+            # batch) could otherwise leave committed vectors with no recorded model —
+            # letting a subsequent switch to a different model slip past the mismatch
+            # guard above and mix vector dimensions (load_vectors' np.stack would crash).
+            if store.get_meta("embed_model") is None:
+                store.set_meta("embed_model", runner.model_id)
             vecs = runner.embed([c["text"] for c in pending])
             for c, v in zip(pending, vecs):
                 store.upsert(c, v, runner.model_id)
@@ -41,8 +48,6 @@ def index_update(state_dir, runner, batch=64) -> dict:
             if len(pending) >= batch:
                 flush()
         flush()
-        if indexed:
-            store.set_meta("embed_model", runner.model_id)
     finally:
         store.close()
     return {"indexed": indexed, "skipped": skipped}
@@ -50,8 +55,10 @@ def index_update(state_dir, runner, batch=64) -> dict:
 
 def reindex(state_dir, runner, batch=64) -> dict:
     s = IndexStore(state_dir)
-    s.clear()
-    s.close()
+    try:
+        s.clear()
+    finally:
+        s.close()
     return index_update(state_dir, runner, batch=batch)
 
 

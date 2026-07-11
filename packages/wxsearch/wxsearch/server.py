@@ -66,9 +66,16 @@ def dispatch(req, deps):
         if name == "index_status":
             from .index import IndexStore
             s = IndexStore(deps["state_dir"])
-            st = {"docs": s.count(), "embed_model": s.get_meta("embed_model")}
+            embed_model = s.get_meta("embed_model")
+            docs = s.count()
             s.close()
-            return _content(mid, st)
+            current = None
+            try:
+                current = deps["manager"].resolve("embedding").id
+            except Exception:
+                current = None
+            stale = embed_model is not None and current is not None and embed_model != current
+            return _content(mid, {"docs": docs, "embed_model": embed_model, "vectors_stale": stale})
         if name == "models_status":
             return _content(mid, deps["manager"].status())
         if name == "set_model":
