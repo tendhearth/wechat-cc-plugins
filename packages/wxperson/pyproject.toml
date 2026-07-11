@@ -1,0 +1,9 @@
+[project]
+name = "wxperson"
+version = "0.1.0"
+description = "统一人物简报:一次组装某人的关系/事实/义务/近期消息 for wechat-cc"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
