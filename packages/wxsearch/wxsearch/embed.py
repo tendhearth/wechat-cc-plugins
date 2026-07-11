@@ -18,12 +18,23 @@ def l2_normalize(mat: np.ndarray) -> np.ndarray:
     return (mat / norms).astype(np.float32)
 
 
-def _default_embed_fn(model_dir: Path, texts):
-    # VERIFY-AGAINST-REAL-MODEL: run the resolved embedding model (bge/BGE-M3) via ONNX Runtime
-    # (tokenize -> onnxruntime InferenceSession -> mean-pool -> return (n, dim) float32).
-    # Isolated here so the pipeline is fully testable with an injected fake.
-    import onnxruntime  # noqa: F401  (real impl pinned when the model is chosen)
-    raise NotImplementedError("OnnxEmbedRunner default embed_fn: wire ONNX Runtime for the chosen model")
+_FE = {"bge-small-zh-v1.5": "BAAI/bge-small-zh-v1.5",
+       "jina-embeddings-v2-base-zh": "jinaai/jina-embeddings-v2-base-zh"}
+_cache = {}   # model_id -> TextEmbedding (loading is expensive; reuse within a process)
+
+
+def _default_embed_fn(model_dir, texts):
+    # fastembed fetches the ONNX model by name (into cache_dir=model_dir, once) and
+    # handles tokenize -> ONNX session -> pooling -> normalize. The map check runs
+    # BEFORE the fastembed import so an unmapped model errors clearly without it.
+    mid = Path(model_dir).name
+    if mid not in _FE:
+        raise ValueError("wxsearch: no fastembed mapping for embedding model %r" % mid)
+    from fastembed import TextEmbedding
+    import numpy as np
+    if mid not in _cache:
+        _cache[mid] = TextEmbedding(_FE[mid], cache_dir=str(model_dir))
+    return np.array(list(_cache[mid].embed(list(texts))), dtype=np.float32)
 
 
 class OnnxEmbedRunner:

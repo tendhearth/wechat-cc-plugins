@@ -7,10 +7,16 @@ name = "wxsearch"
 version = "0.1.0"
 description = "Local hybrid (semantic+keyword) search over WeChat history for wechat-cc"
 requires-python = ">=3.10"
-dependencies = ["numpy", "zstandard>=0.22"]
+dependencies = ["numpy>=1.24", "zstandard>=0.22", "fastembed>=0.7"]
 
 [project.optional-dependencies]
 test = ["pytest>=7"]
 
 [tool.setuptools.packages.find]
 include = ["wxsearch*"]
+
+[tool.pytest.ini_options]
+addopts = "-m 'not integration'"   # network/real-model tests are opt-in: run with -m integration
+markers = [
+    "integration: real-machine tests that hit the network / a real model (opt in with -m integration)",
+]

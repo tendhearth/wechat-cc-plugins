@@ -65,21 +65,21 @@ MODELS = (
         ),
     ),
     # --- embedding ---
+    # Embedding models run through fastembed (see wxsearch/embed.py), which fetches
+    # them by model-NAME from its own catalog and handles tokenize/pool/normalize.
+    # So model-manager does NOT download embedding files: artifacts are zero-URL
+    # markers (ensure() just mkdirs the dir) and model-manager owns only the tier
+    # CHOICE (resolve/set_model). wxsearch maps these ids -> fastembed model names.
     ModelSpec(
         id="bge-small-zh-v1.5", capability="embedding", tier="light", runtime="onnx",
         artifacts=(
-            Artifact("any",
-                     ["modelscope://BAAI/bge-small-zh-v1.5",
-                      "https://huggingface.co/BAAI/bge-small-zh-v1.5"],
-                     size_mb=100),
+            Artifact("any", [], size_mb=100),
         ),
     ),
     ModelSpec(
-        id="bge-m3", capability="embedding", tier="high", runtime="onnx",
+        id="jina-embeddings-v2-base-zh", capability="embedding", tier="high", runtime="onnx",
         artifacts=(
-            Artifact("any",
-                     ["modelscope://BAAI/bge-m3", "https://huggingface.co/BAAI/bge-m3"],
-                     size_mb=2100),
+            Artifact("any", [], size_mb=640),
         ),
     ),
     # --- VLM (high only; light == off, so no light spec) ---
