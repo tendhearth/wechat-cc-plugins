@@ -63,7 +63,7 @@ def reindex(state_dir, runner, batch=64) -> dict:
 
 
 def _cosine_topk(store, runner, query, k):
-    rowids, mat = store.load_vectors()
+    rowids, mat = store.load_vectors(runner.model_id)   # only this model's vectors (uniform dim)
     if not rowids:
         return []
     q = runner.embed([query])[0]
