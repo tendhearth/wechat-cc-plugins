@@ -57,8 +57,9 @@ def _obligations(state_dir, un, name):
 
 def _recent(state_dir, un, n):
     """Newest-first recent messages in this contact's conversation (wxsearch
-    index). Plain read-only sqlite — no embedding, no write-path side effects."""
-    path = os.path.join(str(state_dir), "index.sqlite")
+    index). Plain read-only sqlite — no embedding, no write-path side effects.
+    wxsearch's IndexStore lives at `<state_dir>/wxsearch/index.sqlite`."""
+    path = os.path.join(str(state_dir), "wxsearch", "index.sqlite")
     if not os.path.exists(path):
         return []
     con = sqlite3.connect("file:%s?mode=ro" % path, uri=True)

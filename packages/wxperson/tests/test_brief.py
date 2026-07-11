@@ -30,8 +30,9 @@ def _seed(state_dir):
                     "predicate": "欠我", "value": "200块"}, NOW)
     fs.close()
 
-    # wxsearch index: 15 msgs in zhang's conversation + 3 in li's
-    con = sqlite3.connect(os.path.join(str(state_dir), "index.sqlite"))
+    # wxsearch index lives at <state_dir>/wxsearch/index.sqlite (IndexStore layout)
+    os.makedirs(os.path.join(str(state_dir), "wxsearch"), exist_ok=True)
+    con = sqlite3.connect(os.path.join(str(state_dir), "wxsearch", "index.sqlite"))
     con.execute("CREATE TABLE docs (rowid INTEGER PRIMARY KEY, msg_key TEXT UNIQUE, "
                 "conversation TEXT, sender TEXT, time INTEGER, type TEXT, text TEXT, "
                 "vector BLOB, model_id TEXT)")
@@ -81,7 +82,7 @@ def test_unresolved_name_returns_candidates(tmp_path):
 
 def test_degrades_when_index_absent(tmp_path):
     _seed(tmp_path)
-    os.remove(os.path.join(str(tmp_path), "index.sqlite"))
+    os.remove(os.path.join(str(tmp_path), "wxsearch", "index.sqlite"))
     b = person_brief(str(tmp_path), "张三")
     assert b["resolved"] is True                # still resolves
     assert b["relationship"] is not None        # relationship still there
