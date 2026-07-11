@@ -18,66 +18,23 @@ def l2_normalize(mat: np.ndarray) -> np.ndarray:
     return (mat / norms).astype(np.float32)
 
 
-# Module-level cache: (tokenizer, onnxruntime session) keyed by model_dir, so repeated
-# calls to _default_embed_fn (e.g. per-batch indexing) don't reload the tokenizer/model
-# from disk each time.
-_SESSION_CACHE: dict = {}
+_FE = {"bge-small-zh-v1.5": "BAAI/bge-small-zh-v1.5",
+       "jina-embeddings-v2-base-zh": "jinaai/jina-embeddings-v2-base-zh"}
+_cache = {}   # model_id -> TextEmbedding (loading is expensive; reuse within a process)
 
 
-def _onnx_model_path(model_dir: Path) -> Path:
-    # Xenova-style HF exports sometimes nest the artifact under onnx/model.onnx,
-    # sometimes flatten it at the repo root as model.onnx. Handle both.
-    flat = model_dir / "model.onnx"
-    nested = model_dir / "onnx" / "model.onnx"
-    if flat.exists():
-        return flat
-    if nested.exists():
-        return nested
-    raise FileNotFoundError(
-        "no model.onnx found under %s (checked %s and %s)" % (model_dir, flat, nested))
-
-
-def _load_session(model_dir: Path):
-    key = str(model_dir)
-    cached = _SESSION_CACHE.get(key)
-    if cached is not None:
-        return cached
-
-    from tokenizers import Tokenizer
-    import onnxruntime as ort
-
-    tok = Tokenizer.from_file(str(Path(model_dir) / "tokenizer.json"))
-    tok.enable_padding()
-    tok.enable_truncation(max_length=512)
-
-    sess = ort.InferenceSession(str(_onnx_model_path(model_dir)), providers=["CPUExecutionProvider"])
-
-    _SESSION_CACHE[key] = (tok, sess)
-    return tok, sess
-
-
-def _default_embed_fn(model_dir: Path, texts):
-    # Real ONNX inference: tokenize -> onnxruntime InferenceSession -> CLS-pool ->
-    # return (n, dim) float32, un-normalized (OnnxEmbedRunner.embed L2-normalizes).
-    # Isolated here so the pipeline is fully testable with an injected fake.
-    tok, sess = _load_session(model_dir)
-
-    enc = tok.encode_batch(list(texts))
-    input_ids = np.array([e.ids for e in enc], dtype=np.int64)
-    attention_mask = np.array([e.attention_mask for e in enc], dtype=np.int64)
-    token_type_ids = np.array([e.type_ids for e in enc], dtype=np.int64)
-
-    available = {"input_ids": input_ids, "attention_mask": attention_mask,
-                 "token_type_ids": token_type_ids}
-    feeds = {name: available[name] for name in (i.name for i in sess.get_inputs())
-             if name in available}
-
-    outputs = sess.run(None, feeds)
-    last_hidden_state = outputs[0]   # first output == last_hidden_state for this model
-
-    # CLS pooling (bge-small-zh-v1.5's 1_Pooling/config.json is CLS, not mean-pool).
-    emb = np.asarray(last_hidden_state[:, 0, :], dtype=np.float32)
-    return emb
+def _default_embed_fn(model_dir, texts):
+    # fastembed fetches the ONNX model by name (into cache_dir=model_dir, once) and
+    # handles tokenize -> ONNX session -> pooling -> normalize. The map check runs
+    # BEFORE the fastembed import so an unmapped model errors clearly without it.
+    mid = Path(model_dir).name
+    if mid not in _FE:
+        raise ValueError("wxsearch: no fastembed mapping for embedding model %r" % mid)
+    from fastembed import TextEmbedding
+    import numpy as np
+    if mid not in _cache:
+        _cache[mid] = TextEmbedding(_FE[mid], cache_dir=str(model_dir))
+    return np.array(list(_cache[mid].embed(list(texts))), dtype=np.float32)
 
 
 class OnnxEmbedRunner:

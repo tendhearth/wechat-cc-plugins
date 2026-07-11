@@ -47,6 +47,13 @@ def main():
     except ImportError:
         print("安装依赖：numpy")
         _pip_install("numpy")
+    try:
+        import fastembed  # noqa: F401
+    except ImportError:
+        print("安装依赖：fastembed（本地嵌入运行时，含 onnxruntime）")
+        r = subprocess.run([sys.executable, "-m", "pip", "install", "fastembed"])
+        if r.returncode != 0:
+            sys.exit("!! fastembed 安装失败")
     from wxsearch._deps import ensure_model_manager, model_manager_dir
     ensure_model_manager()
     try:
