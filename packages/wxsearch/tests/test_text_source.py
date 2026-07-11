@@ -103,15 +103,16 @@ def test_media_joined_by_server_id(tmp_path):
     assert c["text"] == "语音转写内容"
 
 
-def test_media_joined_by_local_fallback(tmp_path):
+def test_media_without_server_id_not_wrong_matched(tmp_path):
+    # server_id-less voice/image must NOT be joined via a synthetic local_<id>: that key
+    # lives in the MEDIA db's namespace, so a coincidental Msg local_id could pull the
+    # WRONG transcript. It's a clean miss (message skipped), never a mis-attribution.
     un = "bob"
     _setup(tmp_path,
            [(1, un, 1)],
-           {_tbl(un): [(10, 3, 1, 1000, None, None)]})      # image, no server_id
-    _derived(tmp_path, [("local_10", "image", "OCR文本")])
-    c = list(iter_chunks(tmp_path))[0]
-    assert c["type"] == "image"
-    assert c["text"] == "OCR文本"
+           {_tbl(un): [(10, 3, 1, 1000, None, None)]})      # image, NO server_id, Msg local_id 10
+    _derived(tmp_path, [("local_10", "image", "别人的OCR")])  # derived keyed by MEDIA local_id 10
+    assert list(iter_chunks(tmp_path)) == []                 # not wrong-matched -> skipped
 
 
 def test_media_without_derived_skipped(tmp_path):

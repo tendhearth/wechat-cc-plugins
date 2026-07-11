@@ -87,8 +87,15 @@ def iter_chunks(state_dir):
                         text = _to_text(r["message_content"], sender_un).strip()
                         kind = "text"
                     else:
-                        # match wxmedia's key scheme: real server_id, else synthetic local_<id>
-                        mkey = str(r["server_id"]) if r["server_id"] else "local_%s" % r["local_id"]
+                        # Join wxmedia-derived text ONLY on the real server_id — the shared,
+                        # reliable key across the message and media DBs. wxmedia's synthetic
+                        # `local_<id>` fallback uses the MEDIA db's local_id, a different
+                        # namespace from this Msg table's local_id, so matching on it would
+                        # mis-attribute a transcript. server_id-less (self-sent) voice is
+                        # simply not cross-referenced here — a rare, safe miss, not a wrong match.
+                        if not r["server_id"]:
+                            continue
+                        mkey = str(r["server_id"])
                         if mkey not in derived:
                             continue
                         kind, dtext = derived[mkey]
