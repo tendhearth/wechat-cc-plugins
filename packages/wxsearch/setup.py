@@ -15,7 +15,7 @@ def _pip_install(*packages):
 def _ensure_embedding_runtime_deps():
     """Resolve the currently-configured embedding model and install its
     runtime's deps. Every embedding tier today is runtime=="onnx" (bge-small-zh
-    light / BGE-M3 high), so this installs onnxruntime + tokenizers — but it
+    light / jina-embeddings-v2-base-zh high), so this installs onnxruntime + tokenizers — but it
     goes through resolve() rather than hardcoding, so a future non-onnx tier
     (or an "off" override, if one is ever added for embedding) doesn't drag
     them in unnecessarily."""

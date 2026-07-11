@@ -16,6 +16,7 @@ test = ["pytest>=7"]
 include = ["wxsearch*"]
 
 [tool.pytest.ini_options]
+addopts = "-m 'not integration'"   # network/real-model tests are opt-in: run with -m integration
 markers = [
-    "integration: real-machine tests that hit the network / a real model (deselect with -m 'not integration')",
+    "integration: real-machine tests that hit the network / a real model (opt in with -m integration)",
 ]
