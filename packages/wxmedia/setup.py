@@ -1,5 +1,12 @@
-"""wxmedia setup: install deps + choose ASR model tier (per-OS via model-manager)."""
-import subprocess
+"""wxmedia setup: build a Python 3.10+ venv with pilk + faster-whisper.
+
+faster-whisper (local ASR; pulls ctranslate2 + av) needs Python 3.10+, which the
+daemon's system `python3` often isn't. So wxmedia owns `<pluginDir>/.venv`
+(created here from a 3.10+ interpreter) and its manifest spawns that venv's
+python. model-manager is resolved from source via sys.path at runtime (3.9-safe),
+so it is not installed into the venv.
+"""
+import os
 import sys
 
 
@@ -10,31 +17,22 @@ def main():
         except Exception:
             pass
     print("== wxmedia setup ==")
-    # pilk is on PyPI — pip-install if missing
-    try:
-        import pilk  # noqa: F401
-    except ImportError:
-        print("安装依赖：pilk")
-        r = subprocess.run([sys.executable, "-m", "pip", "install", "pilk"])
-        if r.returncode != 0:
-            sys.exit("!! pilk 安装失败")
-    # faster-whisper is on PyPI — pip-install if missing
-    try:
-        import faster_whisper  # noqa: F401
-    except ImportError:
-        print("安装依赖：faster-whisper（本地语音转文字，含 ctranslate2 + av）")
-        r = subprocess.run([sys.executable, "-m", "pip", "install", "faster-whisper"])
-        if r.returncode != 0:
-            sys.exit("!! faster-whisper 安装失败")
-    # model-manager is a monorepo sibling (packages/model-manager), NOT on PyPI —
-    # resolve it via sys.path rather than pip.
+
+    # model-manager is a monorepo sibling (not on PyPI) — resolve from source.
     from wxmedia._deps import ensure_model_manager, model_manager_dir
     ensure_model_manager()
     try:
-        import model_manager  # noqa: F401
+        import model_manager  # noqa: F401  (3.9-safe; imports fine under the setup python)
     except ImportError:
         sys.exit("!! 找不到 model-manager（应在 %s）。确认它与 wxmedia 一同放在 monorepo/打包中。"
                  % model_manager_dir())
+
+    # Build the 3.10+ venv with the ASR runtime. faster-whisper pulls
+    # ctranslate2 + av; pilk decodes WeChat SILK voice.
+    from model_manager.plugin_venv import ensure_plugin_venv
+    plugin_dir = os.path.dirname(os.path.abspath(__file__))
+    vpy = ensure_plugin_venv(plugin_dir, ["pilk", "faster-whisper"])
+    print("✓ venv 就绪：%s" % vpy)
     print("✓ 依赖就绪。ASR 模型在首次 voice_backfill 时按所选档懒下载（默认轻量 whisper-small via faster-whisper）。")
 
 

@@ -1,4 +1,5 @@
 """Orchestration: resolve (config+preset+platform) then lazily ensure downloads."""
+from __future__ import annotations   # defer PEP-604 (str | None) so this imports under Python 3.9 too
 from pathlib import Path
 
 from .platform import current_platform

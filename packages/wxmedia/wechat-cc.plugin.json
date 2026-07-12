@@ -6,19 +6,19 @@
   "displayName": "语音转文字 (wxmedia)",
   "description": "把微信语音消息本地转成可搜索文本（SILK→ASR，全本地，模型分层可选）。读 wxvault 解密产物，不外连。",
   "spawn": {
-    "command": "python3",
+    "command": "${pluginDir}/.venv/bin/python",
     "args": ["-m", "wxmedia.server"],
     "env": { "PYTHONPATH": "${pluginDir}", "WXVAULT_STATE_DIR": "${dataDir}/../wxvault", "HF_ENDPOINT": "https://hf-mirror.com" }
   },
-  "healthcheck": { "requiresPaths": ["${dataDir}/../wxvault/out/decrypted"] },
+  "healthcheck": { "requiresPaths": ["${dataDir}/../wxvault/out/decrypted", "${pluginDir}/.venv/bin/python"] },
   "setup": {
     "command": "python3",
     "args": ["${pluginDir}/setup.py"],
     "env": { "WXVAULT_STATE_DIR": "${dataDir}/../wxvault", "HF_ENDPOINT": "https://hf-mirror.com" }
   },
   "requires": {
-    "python3": "required（依赖 pilk + faster-whisper + model-manager；ASR 模型按所选档懒下载）",
-    "setup": "python3 ${pluginDir}/setup.py：装依赖 + 选模型档（轻量/高精度）。语音源来自 wxvault 解密的 media_*.sqlite，需先跑 wxvault。"
+    "python3": "运行于自建 .venv（Python 3.10+，含 pilk + faster-whisper）；model-manager 由源码解析",
+    "setup": "python3 ${pluginDir}/setup.py：用系统 python3 找一个 3.10+ 解释器建 .venv 装 pilk+faster-whisper。语音源来自 wxvault 解密的 media_*.sqlite，需先跑 wxvault。"
   },
   "tools": ["voice_backfill", "get_media_text", "models_status", "set_model"]
 }

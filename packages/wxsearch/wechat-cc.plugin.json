@@ -6,19 +6,19 @@
   "displayName": "微信语义搜索 (wxsearch)",
   "description": "对本地微信历史做语义+关键词混合检索（含语音/图片转出的文本）。全本地，不外连。读 wxvault 解密产物与 wxmedia 派生文本。",
   "spawn": {
-    "command": "python3",
+    "command": "${pluginDir}/.venv/bin/python",
     "args": ["-m", "wxsearch.server"],
     "env": { "PYTHONPATH": "${pluginDir}", "WXVAULT_STATE_DIR": "${dataDir}/../wxvault", "HF_ENDPOINT": "https://hf-mirror.com" }
   },
-  "healthcheck": { "requiresPaths": ["${dataDir}/../wxvault/out/decrypted"] },
+  "healthcheck": { "requiresPaths": ["${dataDir}/../wxvault/out/decrypted", "${pluginDir}/.venv/bin/python"] },
   "setup": {
     "command": "python3",
     "args": ["${pluginDir}/setup.py"],
     "env": { "WXVAULT_STATE_DIR": "${dataDir}/../wxvault", "HF_ENDPOINT": "https://hf-mirror.com" }
   },
   "requires": {
-    "python3": "required（依赖 numpy + model-manager；embedding 运行时按档下载）",
-    "setup": "python3 ${pluginDir}/setup.py：装 numpy + 解析兄弟 model-manager。先跑 wxvault 解密、可选跑 wxmedia 转语音/图片，再 index_update 建索引。"
+    "python3": "运行于自建 .venv（Python 3.10+，含 numpy + fastembed）；model-manager 由源码解析",
+    "setup": "python3 ${pluginDir}/setup.py：用系统 python3 找一个 3.10+ 解释器建 .venv 装 numpy+fastembed。先跑 wxvault 解密，再 index_update 建索引。"
   },
   "tools": ["search", "index_update", "reindex", "index_status", "models_status", "set_model"]
 }

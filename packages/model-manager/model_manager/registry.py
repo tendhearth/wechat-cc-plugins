@@ -1,4 +1,5 @@
 """Static catalogue of downloadable local models, per capability/tier/OS."""
+from __future__ import annotations   # defer PEP-604 (str | None) so this imports under Python 3.9 too
 from dataclasses import dataclass
 
 from .platform import PLATFORMS

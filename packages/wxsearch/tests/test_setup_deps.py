@@ -1,8 +1,7 @@
-"""Dry-run tests for setup.py's embedding-runtime dep install logic.
-Never actually pip-installs — subprocess.run is monkeypatched to record calls."""
-import builtins
+"""setup.py delegates venv creation to model_manager.plugin_venv. Verify the
+deps it requests + that it resolves model-manager — without building a venv or
+installing anything (ensure_plugin_venv is monkeypatched)."""
 import importlib.util
-import sys
 from pathlib import Path
 
 from wxsearch._deps import ensure_model_manager
@@ -19,55 +18,20 @@ def _load_setup_module():
     return mod
 
 
-def test_installs_onnxruntime_and_tokenizers_when_missing(monkeypatch):
-    setup = _load_setup_module()
-
-    real_import = builtins.__import__
-
-    def fake_import(name, *args, **kwargs):
-        if name in ("onnxruntime", "tokenizers"):
-            raise ImportError("simulated: %s not installed" % name)
-        return real_import(name, *args, **kwargs)
-
-    monkeypatch.setattr(builtins, "__import__", fake_import)
-
+def test_main_builds_venv_with_numpy_and_fastembed(monkeypatch):
+    import model_manager.plugin_venv as pv
     calls = []
 
-    def fake_run(cmd):
-        calls.append(cmd)
-        class R: returncode = 0
-        return R()
+    def fake_ensure(plugin_dir, deps, log=print):
+        calls.append((plugin_dir, deps))
+        return "/fake/.venv/bin/python"
 
-    monkeypatch.setattr(setup.subprocess, "run", fake_run)
-    monkeypatch.delenv("WXVAULT_STATE_DIR", raising=False)
+    monkeypatch.setattr(pv, "ensure_plugin_venv", fake_ensure)
 
-    setup._ensure_embedding_runtime_deps()
+    setup = _load_setup_module()
+    setup.main()
 
     assert len(calls) == 1
-    cmd = calls[0]
-    assert cmd[0] == sys.executable
-    assert cmd[1:3] == ["-m", "pip"]
-    assert "install" in cmd
-    assert "onnxruntime" in cmd
-    assert "tokenizers" in cmd
-
-
-def test_skips_install_when_already_present(monkeypatch):
-    setup = _load_setup_module()
-
-    real_import = builtins.__import__
-
-    def fake_import(name, *args, **kwargs):
-        if name in ("onnxruntime", "tokenizers"):
-            return object()  # pretend it's importable
-        return real_import(name, *args, **kwargs)
-
-    monkeypatch.setattr(builtins, "__import__", fake_import)
-
-    calls = []
-    monkeypatch.setattr(setup.subprocess, "run", lambda cmd: calls.append(cmd))
-    monkeypatch.delenv("WXVAULT_STATE_DIR", raising=False)
-
-    setup._ensure_embedding_runtime_deps()
-
-    assert calls == []
+    plugin_dir, deps = calls[0]
+    assert plugin_dir.endswith("wxsearch")
+    assert deps == ["numpy", "fastembed"]   # fastembed pulls onnxruntime + tokenizers
