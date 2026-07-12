@@ -104,6 +104,10 @@ def main():
             s.reconfigure(encoding="utf-8")
         except Exception:
             pass
+    # HF mirror default (China-friendly); a HF_ENDPOINT set in the daemon env now
+    # WINS (the manifest no longer hardcodes it) so users on a network that blocks
+    # hf-mirror can override to https://huggingface.co.
+    os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
     state_dir = os.environ.get("WXVAULT_STATE_DIR") or os.path.dirname(os.path.abspath(__file__))
     from ._deps import ensure_model_manager
     ensure_model_manager()          # resolve the sibling model-manager package from the monorepo

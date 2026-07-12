@@ -18,6 +18,7 @@ def main():
         except Exception:
             pass
     print("== wxsearch setup ==")
+    os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")  # default; daemon env HF_ENDPOINT overrides
 
     # model-manager is a monorepo sibling (not on PyPI) — resolve from source.
     from wxsearch._deps import ensure_model_manager, model_manager_dir

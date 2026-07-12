@@ -8,13 +8,13 @@
   "spawn": {
     "command": "${pluginDir}/.venv/bin/python",
     "args": ["-m", "wxsearch.server"],
-    "env": { "PYTHONPATH": "${pluginDir}", "WXVAULT_STATE_DIR": "${dataDir}/../wxvault", "HF_ENDPOINT": "https://hf-mirror.com" }
+    "env": { "PYTHONPATH": "${pluginDir}", "WXVAULT_STATE_DIR": "${dataDir}/../wxvault" }
   },
   "healthcheck": { "requiresPaths": ["${dataDir}/../wxvault/out/decrypted", "${pluginDir}/.venv/bin/python"] },
   "setup": {
     "command": "python3",
     "args": ["${pluginDir}/setup.py"],
-    "env": { "WXVAULT_STATE_DIR": "${dataDir}/../wxvault", "HF_ENDPOINT": "https://hf-mirror.com" }
+    "env": { "WXVAULT_STATE_DIR": "${dataDir}/../wxvault" }
   },
   "requires": {
     "python3": "运行于自建 .venv（Python 3.10+，含 numpy + fastembed）；model-manager 由源码解析",
